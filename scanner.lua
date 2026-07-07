@@ -317,4 +317,10 @@ function Scanner.FindByName(name)
     return nil
 end
 
+------------------------------------------------------------
+-- Alias: init.lua registers "Scanner.Scan" as a Heartbeat
+-- task. Expose Scan -> Update so both names work.
+------------------------------------------------------------
+Scanner.Scan = Scanner.Update
+
 return Scanner

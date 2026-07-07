@@ -43,6 +43,10 @@ local PRIORITY = {
 -- the per-spell FastHealPct used by the healer).
 local EMERGENCY_HP = 35
 
+-- Default "heal below this HP%" for leeches that don't set a
+-- per-leech threshold (HealBelowPct == 0 means inherit this).
+local DEFAULT_LEECH_HEAL_BELOW = 75
+
 ------------------------------------------------------------
 -- Internal
 ------------------------------------------------------------
@@ -104,9 +108,19 @@ local function Evaluate(member, scanner)
         end
 
     elseif isLeech then
+        -- Per-leech "heal below" threshold (0 = inherit the
+        -- global default). Emergency triage stays global so any
+        -- enabled leech is protected at EMERGENCY_HP regardless
+        -- of its custom threshold.
+        local healBelow = tonumber(member.HealBelowPct) or 0
+        if healBelow <= 0 then
+            healBelow = DEFAULT_LEECH_HEAL_BELOW
+        end
+        if healBelow > 100 then healBelow = 100 end
+
         if hp <= EMERGENCY_HP then
             tier = PRIORITY.LEECH_EMERGENCY
-        elseif hp <= 75 then
+        elseif hp <= healBelow then
             tier = PRIORITY.LEECH
         else
             return

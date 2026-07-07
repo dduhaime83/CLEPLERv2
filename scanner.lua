@@ -208,7 +208,7 @@ end
 -- Build one watchlist leech record from a spawn lookup
 ------------------------------------------------------------
 
-local function BuildWatchMember(name, priority)
+local function BuildWatchMember(name, priority, healBelowPct)
     local spawn = ResolveSpawn(name)
     if not spawn then
         return nil
@@ -228,6 +228,7 @@ local function BuildWatchMember(name, priority)
         Spawn = spawn,
         Watchlist = true,
         Priority = priority or 999,
+        HealBelowPct = tonumber(healBelowPct) or 0,
     }
 
     return record
@@ -338,7 +339,7 @@ local function BuildWatchMembers(seenIDs)
 
     for i, player in ipairs(State.WatchList) do
         if player.Enabled and player.Name and player.Name ~= "" then
-            local record = BuildWatchMember(player.Name, i)
+            local record = BuildWatchMember(player.Name, i, player.HealBelowPct)
             if record and record.ID ~= 0 and not seenIDs[record.ID] then
                 seenIDs[record.ID] = true
                 table.insert(Scanner.WatchMembers, record)

@@ -251,6 +251,48 @@ local function DrawLeechBuffs(name)
 end
 
 ------------------------------------------------------------
+-- Per-leech "heal below" HP threshold slider (sub-line).
+--   0 = inherit the global default; otherwise heal this leech
+--   only when its HP drops at/below the chosen %.
+------------------------------------------------------------
+
+local function DrawLeechThreshold(i, player)
+    ImGui.PushID(i)
+
+    ImGui.TextDisabled("      heal below:")
+    ImGui.SameLine()
+
+    local hb = tonumber(player.HealBelowPct) or 0
+
+    -- Auto = inherit the global default (0).
+    if ImGui.Button("Auto") then
+        WatchList.SetHealBelowPct(i, 0)
+        WatchList.Save()
+    end
+
+    ImGui.SameLine()
+    if ImGui.Button("-##hbdn") then
+        WatchList.SetHealBelowPct(i, hb - 5)
+        WatchList.Save()
+    end
+
+    ImGui.SameLine()
+    if hb == 0 then
+        ImGui.TextDisabled("auto (75%)")
+    else
+        ImGui.Text(string.format("%d%%", hb))
+    end
+
+    ImGui.SameLine()
+    if ImGui.Button("+##hbup") then
+        WatchList.SetHealBelowPct(i, hb + 5)
+        WatchList.Save()
+    end
+
+    ImGui.PopID()
+end
+
+------------------------------------------------------------
 -- Add-target row
 ------------------------------------------------------------
 
@@ -388,6 +430,7 @@ function Widget.Draw()
 
     for i, player in ipairs(players) do
         DrawLeechRow(i, player)
+        DrawLeechThreshold(i, player)
         DrawLeechBuffs(player.Name)
         DrawLeechHots(player.Name)
     end

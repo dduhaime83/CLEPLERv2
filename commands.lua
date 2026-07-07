@@ -24,7 +24,7 @@ local bound = false
 
 local function Usage()
     print("[CLEPLER] usage: /clepler on|off|pause|ui|reloadspells" ..
-          "|add <name>|remove <name>|mem <gem> <spell>|debug|test|buffs|hots|status|quit")
+          "|add <name>|remove <name>|mem <gem> <spell>|debug|test|buffs|hots|med|status|quit")
 end
 
 ------------------------------------------------------------
@@ -32,13 +32,14 @@ end
 ------------------------------------------------------------
 
 local function Status()
-    print(string.format("[CLEPLER] v%s  enabled=%s  paused=%s  test=%s  buffs=%s  hots=%s",
+    print(string.format("[CLEPLER] v%s  enabled=%s  paused=%s  test=%s  buffs=%s  hots=%s  med=%s",
         tostring(State.Version),
         tostring(State.Enabled),
         tostring(State.Paused),
         tostring(State.Settings.TestMode),
         tostring(State.Settings.Buffing),
-        tostring(State.Settings.HotRolling)))
+        tostring(State.Settings.HotRolling),
+        tostring(State.Settings.MedBreaks)))
     print(string.format("[CLEPLER] watchlist entries: %d",
         #(WatchList.GetPlayers() or {})))
 end
@@ -135,6 +136,12 @@ local function Handler(...)
         State.Settings.HotRolling = not State.Settings.HotRolling
         print(string.format("[CLEPLER] hot rolling=%s",
             tostring(State.Settings.HotRolling)))
+        Config.Save()
+
+    elseif cmd == "med" then
+        State.Settings.MedBreaks = not State.Settings.MedBreaks
+        print(string.format("[CLEPLER] med breaks=%s",
+            tostring(State.Settings.MedBreaks)))
         Config.Save()
 
     elseif cmd == "status" then

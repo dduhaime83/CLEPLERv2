@@ -30,6 +30,7 @@ local HealQueue = require('healqueue')
 local Profiles  = require('healprofiles')
 local Spells    = require('spells')
 local Caster    = require('caster')
+local Med       = require('med')
 
 local Hots = {}
 
@@ -214,6 +215,9 @@ function Hots.Pulse()
 
     if not State.Enabled then return end
     if not State.Settings.HotRolling then return end
+
+    -- Don't roll HoTs while on a med break (conserves mana).
+    if Med.IsMedding() then return end
 
     -- Reactive healing always wins.
     if HealQueue.Count() > 0 then return end

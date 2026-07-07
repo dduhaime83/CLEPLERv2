@@ -76,6 +76,9 @@ function Config.Reset()
         HotMinManaPct = 25,
         HotOnlyLeech = true,
         HotDefaultDurationSec = 72,
+        MedBreaks = true,
+        MedManaFloorPct = 15,
+        MedManaCeilingPct = 85,
         Debug = false,
     }
 

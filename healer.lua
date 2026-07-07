@@ -19,6 +19,7 @@ local HealQueue = require('healqueue')
 local Profiles  = require('healprofiles')
 local Spells    = require('spells')
 local Caster    = require('caster')
+local Med       = require('med')
 
 local Healer = {}
 
@@ -93,6 +94,20 @@ function Healer.Pulse()
 
     local entry = HealQueue.Next()
     if not entry then return end
+
+    -- While on a med break, only emergency heals fire (self
+    -- emergency outranks everything; a dead PLer heals no one).
+    -- Non-emergency heals resume once mana hits the ceiling.
+    if Med.IsMedding() then
+        local t = entry.Tier or 0
+        -- SELF_EMERGENCY(1000), LEECH_EMERGENCY(900),
+        -- GROUP_EMERGENCY(600) all count as emergencies.
+        if t < 600 then
+            return
+        end
+        -- An emergency breaks the med break: stand and heal.
+        Med.Break()
+    end
 
     -- Reset per-pulse so LastError reflects only this attempt.
     State.LastError = ""

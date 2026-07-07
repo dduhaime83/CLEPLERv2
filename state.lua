@@ -63,9 +63,17 @@ State.Settings = {
     -- first place. Tracker-based, same model as buffs.
     HotRolling          = true,    -- master toggle for HoT rolling
     HotInterval         = 2000,    -- ms between HoT pulses
-    HotRefreshBuffer    = 18,      -- sec early-refresh margin (~3 ticks)
+    HotRefreshBuffer    = 12,      -- sec early-refresh margin (~2 ticks)
     HotMinManaPct       = 25,      -- skip HoT rolling below this mana %
     HotOnlyLeech        = true,    -- only roll HoT on leeches (not group)
+    HotDefaultDurationSec = 72,    -- fallback when MQ reports no HoT duration
+    -- Med breaks: when mana drops below MedManaFloorPct the PLer
+    -- sits to med and suspends non-essential casts; it stands
+    -- and resumes at MedManaCeilingPct. Hysteresis prevents
+    -- thrashing. Emergency self-heals still fire while medding.
+    MedBreaks           = true,    -- master toggle for med breaks
+    MedManaFloorPct     = 15,      -- sit below this mana %
+    MedManaCeilingPct   = 85,      -- stand/resume above this mana %
     Debug            = false,
 }
 

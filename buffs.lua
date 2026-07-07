@@ -32,6 +32,7 @@ local HealQueue = require('healqueue')
 local Profiles  = require('healprofiles')
 local Spells    = require('spells')
 local Caster    = require('caster')
+local Med       = require('med')
 
 local Buffs = {}
 
@@ -266,6 +267,9 @@ function Buffs.Pulse()
 
     if not State.Enabled then return end
     if not State.Settings.Buffing then return end
+
+    -- Don't buff while on a med break (conserves mana for heals).
+    if Med.IsMedding() then return end
 
     -- Healing always wins. Don't start a buff while someone
     -- needs a heal.

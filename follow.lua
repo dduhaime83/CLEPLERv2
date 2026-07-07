@@ -154,6 +154,10 @@ function Follow.Pulse()
     if not State.Settings.FollowEnabled then Follow.Stop("off"); return end
     if State.Paused then Follow.Stop("paused"); return end
 
+    -- A gem-loadout mem sequence is in progress: stop following
+    -- so movement doesn't interrupt memming / re-gemming.
+    if State.MemmingLoadout then Follow.Stop("memming"); return end
+
     -- Medding: stay seated, don't chase. Do NOT stand here --
     -- the med module owns posture and will stand at the ceiling
     -- or on combat aggro.

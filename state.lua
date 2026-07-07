@@ -104,6 +104,11 @@ State.BuffTracker = {}
 -- Keyed by "<LowerName>||<HotName>".
 State.HotTracker = {}
 
+-- Runtime flag: a gem-loadout mem sequence is in progress.
+-- Set by loadout.lua; read by follow.lua (stop moving while
+-- re-gemming). Cleared when the queue drains or is cancelled.
+State.MemmingLoadout = false
+
 -- Simple runtime counters.
 State.Stats = {
     HealsCast     = 0,

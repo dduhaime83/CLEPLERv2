@@ -13,6 +13,7 @@ local Scanner=require('scanner')
 local Spells=require('spells')
 local Engine=require('engine')
 local Healer=require('healer')
+local Buffs=require('buffs')
 local UI=require('ui')
 
 Config.Initialize()
@@ -23,6 +24,7 @@ Commands.Register()
 Heartbeat.Register("Scanner",State.Settings.ScanDelay,Scanner.Scan)
 Heartbeat.Register("Engine",100,Engine.Pulse)
 Heartbeat.Register("Healer",25,Healer.Pulse)
+Heartbeat.Register("Buffs",State.Settings.BuffInterval,Buffs.Pulse)
 
 mq.imgui.init("CLEPLER",UI.Draw)
 

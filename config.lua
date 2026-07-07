@@ -64,6 +64,12 @@ function Config.Reset()
         HoTPct = 85,
         HealWatchList = true,
         MaxHealRange = 200,
+        Buffing = true,
+        BuffInterval = 2000,
+        BuffRefreshBuffer = 120,
+        BuffGroup = false,
+        BuffMinManaPct = 20,
+        BuffDefaultDurationSec = 1800,
         Debug = false,
     }
 

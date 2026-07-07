@@ -21,6 +21,7 @@ local Scanner  = require('scanner')
 local HealQueue = require('healqueue')
 local Buffs    = require('buffs')
 local Hots     = require('hots')
+local Med     = require('med')
 local Config   = require('config')
 
 local Widget = {}
@@ -130,6 +131,24 @@ local function DrawHeader()
     if hotPressed then
         State.Settings.HotRolling = hotOn
         Config.Save()
+    end
+
+    -- MedBreaks toggle (persisted).
+    ImGui.SameLine()
+    ImGui.Text("   |   Med:")
+    ImGui.SameLine()
+    local medOn, medPressed = ImGui.Checkbox("##medbreaks",
+        State.Settings.MedBreaks == true)
+    if medPressed then
+        State.Settings.MedBreaks = medOn
+        Config.Save()
+    end
+
+    -- Medding status indicator. Lights up red while the PLer is
+    -- sitting on a med break so the operator sees it at a glance.
+    if Med.IsMedding() then
+        ImGui.SameLine()
+        ImGui.TextColored(1.0, 0.3, 0.3, 1.0, "[MEDDING]")
     end
 
     ImGui.Separator()

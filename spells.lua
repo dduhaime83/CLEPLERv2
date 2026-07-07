@@ -133,8 +133,8 @@ end
 --   falls back to .Duration(), then to the configured default.
 ------------------------------------------------------------
 
-function Spells.Duration(name)
-    if not name then return 0 end
+function Spells.Duration(name, fallbackSec)
+    if not name then return fallbackSec or 0 end
     local ticks = SafeCall(function()
         return mq.TLO.Spell(name).MyDuration()
     end)
@@ -146,10 +146,11 @@ function Spells.Duration(name)
     if ticks and ticks > 0 then
         return ticks * 6
     end
-    -- Fall back to the configured default so the tracker still
-    -- ages the buff out on schedule.
+    -- Fall back to the caller-supplied default (HoTs are short,
+    -- so they pass a small value; buffs pass nothing and get the
+    -- long BuffDefaultDurationSec).
     local State = require('state')
-    return State.Settings.BuffDefaultDurationSec or 1800
+    return fallbackSec or State.Settings.BuffDefaultDurationSec or 1800
 end
 
 return Spells

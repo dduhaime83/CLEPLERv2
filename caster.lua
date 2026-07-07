@@ -170,10 +170,13 @@ function Caster.Cast(spellName, targetID, entry)
     State.LastError     = ""
 
     -- Route the counter by entry category: buff casts feed
-    -- BuffsCast, heals feed HealsCast. entry is optional so
-    -- callers without a profile entry still count as heals.
+    -- BuffsCast, HoT casts feed HotsCast, heals feed HealsCast.
+    -- entry is optional so callers without a profile entry still
+    -- count as heals.
     if entry and entry.Category == "Buff" then
         State.Stats.BuffsCast = State.Stats.BuffsCast + 1
+    elseif entry and entry.Category == "Hot" then
+        State.Stats.HotsCast = State.Stats.HotsCast + 1
     else
         State.Stats.HealsCast = State.Stats.HealsCast + 1
     end

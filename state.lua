@@ -58,6 +58,14 @@ State.Settings = {
     BuffGroup           = false,   -- also buff group members (not just leeches)
     BuffMinManaPct      = 20,      -- skip buffing below this mana %
     BuffDefaultDurationSec = 1800,  -- fallback when MQ reports no duration
+    -- Proactive HoT rolling: keep a heal-over-time on the
+    -- priority leech so it doesn't dip into emergency in the
+    -- first place. Tracker-based, same model as buffs.
+    HotRolling          = true,    -- master toggle for HoT rolling
+    HotInterval         = 2000,    -- ms between HoT pulses
+    HotRefreshBuffer    = 18,      -- sec early-refresh margin (~3 ticks)
+    HotMinManaPct       = 25,      -- skip HoT rolling below this mana %
+    HotOnlyLeech        = true,    -- only roll HoT on leeches (not group)
     Debug            = false,
 }
 
@@ -78,12 +86,17 @@ State.SpellRoles = {}
 -- Uses character name (not spawn id) so it survives zoning.
 State.BuffTracker = {}
 
+-- HoT tracker: same shape as BuffTracker, maintained by hots.lua.
+-- Keyed by "<LowerName>||<HotName>".
+State.HotTracker = {}
+
 -- Simple runtime counters.
 State.Stats = {
     HealsCast     = 0,
     Emergencies   = 0,
     FailedCasts   = 0,
     BuffsCast     = 0,
+    HotsCast      = 0,
 }
 
 return State

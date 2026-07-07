@@ -70,6 +70,12 @@ function Config.Reset()
         BuffGroup = false,
         BuffMinManaPct = 20,
         BuffDefaultDurationSec = 1800,
+        HotRolling = true,
+        HotInterval = 2000,
+        HotRefreshBuffer = 12,
+        HotMinManaPct = 25,
+        HotOnlyLeech = true,
+        HotDefaultDurationSec = 72,
         Debug = false,
     }
 

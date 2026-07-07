@@ -74,6 +74,12 @@ State.Settings = {
     MedBreaks           = true,    -- master toggle for med breaks
     MedManaFloorPct     = 15,      -- sit below this mana %
     MedManaCeilingPct   = 85,      -- stand/resume above this mana %
+    -- Auto-follow: stick to the priority (top enabled) leech via
+    -- MQ2MoveUtils /stick id so the PLer chases automatically.
+    -- Stops for heals (caster pauses stick before every cast),
+    -- med breaks, combat, casting, and pause.
+    FollowEnabled       = false,   -- master toggle (off by default for safety)
+    FollowDistance      = 20,      -- /stick distance in units
     Debug            = false,
 }
 

@@ -22,6 +22,7 @@ local HealQueue = require('healqueue')
 local Buffs    = require('buffs')
 local Hots     = require('hots')
 local Med     = require('med')
+local Follow  = require('follow')
 local Config   = require('config')
 
 local Widget = {}
@@ -150,6 +151,30 @@ local function DrawHeader()
         ImGui.SameLine()
         ImGui.TextColored(1.0, 0.3, 0.3, 1.0, "[MEDDING]")
     end
+
+    -- Follow toggle (persisted). Off by default for safety.
+    ImGui.SameLine()
+    ImGui.Text("   |   Follow:")
+    ImGui.SameLine()
+    local followOn, followPressed = ImGui.Checkbox("##follow",
+        State.Settings.FollowEnabled == true)
+    if followPressed then
+        State.Settings.FollowEnabled = followOn
+        if not followOn then
+            Follow.Stop("off")
+        end
+        Config.Save()
+    end
+
+    -- Follow status indicator: who we're glued to, or why we're idle.
+    ImGui.SameLine()
+    local fstatus = Follow.Status() or "off"
+    local fcolor
+    if fstatus == "off" then fcolor = { 0.5, 0.5, 0.5, 1.0 }
+    elseif string.find(fstatus, "following", 1, true) then fcolor = { 0.2, 1.0, 0.2, 1.0 }
+    else fcolor = { 1.0, 0.8, 0.2, 1.0 } end
+    ImGui.TextColored(fcolor[1], fcolor[2], fcolor[3], fcolor[4],
+        "[FOLLOW: " .. fstatus .. "]")
 
     ImGui.Separator()
 end

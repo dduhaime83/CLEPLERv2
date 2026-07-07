@@ -79,6 +79,8 @@ function Config.Reset()
         MedBreaks = true,
         MedManaFloorPct = 15,
         MedManaCeilingPct = 85,
+        FollowEnabled = false,
+        FollowDistance = 20,
         Debug = false,
     }
 

@@ -13,6 +13,7 @@
 local mq     = require('mq')
 local State  = require('state')
 local Spells = require('spells')
+local Targeting = require('targeting')
 
 local Caster = {}
 
@@ -155,10 +156,10 @@ function Caster.Cast(spellName, targetID, entry)
     --------------------------------------------------------
     local oldTarget = nil
     if State.Settings.ReturnTarget then
-        oldTarget = SafeCall(function() return mq.TLO.Target.ID() end)
+        oldTarget = Targeting.Save()
     end
 
-    mq.cmd("/target id " .. tostring(targetID))
+    Targeting.Set(targetID)
     mq.delay(100)
     mq.cmd("/cast " .. tostring(gem))
 
@@ -187,7 +188,7 @@ function Caster.Cast(spellName, targetID, entry)
     --------------------------------------------------------
     if State.Settings.ReturnTarget and oldTarget then
         mq.delay(200)
-        mq.cmd("/target id " .. tostring(oldTarget))
+        Targeting.Restore(oldTarget)
     end
 
     return true

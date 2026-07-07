@@ -23,7 +23,19 @@ WatchList.Section = "Players"
 ------------------------------------------------------------
 
 local function NewPlayer(name)
-    return { Name = name, Enabled = true, Priority = 1 }
+    return { Name = name, Enabled = true, Priority = 1, HealBelowPct = 0 }
+end
+
+------------------------------------------------------------
+-- Clamp a percent to 0..100 (integer). 0 means "inherit the
+-- global default leech heal threshold".
+------------------------------------------------------------
+
+local function ClampPct(v)
+    v = tonumber(v) or 0
+    if v < 0 then v = 0 end
+    if v > 100 then v = 100 end
+    return math.floor(v)
 end
 
 ------------------------------------------------------------
@@ -126,6 +138,15 @@ function WatchList.SetEnabled(name, enabled)
     return true
 end
 
+-- Set the per-leech "heal below this HP%" threshold. 0 = inherit
+-- the global default. Index-based because the UI row has i and
+-- duplicate names are disallowed.
+function WatchList.SetHealBelowPct(index, pct)
+    if index < 1 or index > #State.WatchList then return false end
+    State.WatchList[index].HealBelowPct = ClampPct(pct)
+    return true
+end
+
 function WatchList.ToggleEnabled(index)
     if index < 1 or index > #State.WatchList then return false end
     State.WatchList[index].Enabled = not State.WatchList[index].Enabled
@@ -145,8 +166,10 @@ function WatchList.Load()
         local name = Read("Player" .. i, "")
         if name and name ~= "" then
             local en = Read("Player" .. i .. "Enabled", "true")
+            local hb = Read("Player" .. i .. "HealBelowPct", "0")
             local player = NewPlayer(name)
             player.Enabled = (en:lower() == "true")
+            player.HealBelowPct = ClampPct(hb)
             table.insert(State.WatchList, player)
         end
     end
@@ -167,6 +190,9 @@ function WatchList.Save()
         mq.cmdf('/ini "%s" "%s" "%s" "%s"',
             WatchList.File, WatchList.Section, "Player" .. i .. "Enabled",
             tostring(player.Enabled))
+        mq.cmdf('/ini "%s" "%s" "%s" "%s"',
+            WatchList.File, WatchList.Section, "Player" .. i .. "HealBelowPct",
+            tostring(player.HealBelowPct or 0))
     end
 end
 

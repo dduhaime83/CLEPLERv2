@@ -240,10 +240,59 @@ Profiles.Default = {
 
     Buffs = {
 
-        "Symbol",
-        "Armor",
-        "Aegolism",
-        "Temperance",
+        -- Combo HP+AC line. These supersede the standalone
+        -- Symbol (hp) and Armor (ac) lines, so they are listed
+        -- first (highest preference). Higher Rank wins within a
+        -- line; a fresh same-line buff of equal/higher rank, or
+        -- any fresh buff that Supersedes this entry's Line,
+        -- suppresses re-casting.
+        --
+        -- LEVEL-AWARE FRAMEWORK: MinLevel is the recipient's
+        -- minimum level to receive the buff. The values below are
+        -- conservative placeholders -- tune them to your server's
+        -- ruleset (e.g. Aegolism commonly requires a level 45+
+        -- target). Match is a substring fallback against the
+        -- memorized spell name (e.g. "Symbol" matches
+        -- "Symbol of Ryltan").
+        {
+            Name = "Aegolism",
+            Match = "Aegolism",
+            MinLevel = 45,
+            Line = "hp_ac",
+            Rank = 2,
+            Supersedes = { "hp", "ac" },
+            Type = "Spell",
+            Category = "Buff",
+        },
+        {
+            Name = "Temperance",
+            Match = "Temperance",
+            MinLevel = 1,
+            Line = "hp_ac",
+            Rank = 1,
+            Supersedes = { "hp", "ac" },
+            Type = "Spell",
+            Category = "Buff",
+        },
+        {
+            Name = "Symbol",
+            Match = "Symbol",
+            MinLevel = 1,
+            Line = "hp",
+            Rank = 1,
+            Type = "Spell",
+            Category = "Buff",
+        },
+        {
+            Name = "Armor",
+            Match = "Armor",
+            MinLevel = 1,
+            Line = "ac",
+            Rank = 1,
+            Type = "Spell",
+            Category = "Buff",
+        },
+
     },
 
 }

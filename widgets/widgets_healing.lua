@@ -19,6 +19,8 @@ local State    = require('state')
 local WatchList = require('watchlist')
 local Scanner  = require('scanner')
 local HealQueue = require('healqueue')
+local Buffs    = require('buffs')
+local Config   = require('config')
 
 local Widget = {}
 
@@ -107,7 +109,56 @@ local function DrawHeader()
             string.format("%s (%d%%)", top.Name or "?", top.HP or 0))
     end
 
+    -- Buffing toggle (persisted).
+    ImGui.SameLine()
+    ImGui.Text("   |   Buffs:")
+    ImGui.SameLine()
+    local buffOn, buffPressed = ImGui.Checkbox("##buffing",
+        State.Settings.Buffing == true)
+    if buffPressed then
+        State.Settings.Buffing = buffOn
+        Config.Save()
+    end
+
     ImGui.Separator()
+end
+
+------------------------------------------------------------
+-- Buff status for one leech (uses the tracker, not live buff
+-- windows, since out-of-group leeches expose none to MQ).
+------------------------------------------------------------
+
+local function DrawLeechBuffs(name)
+    local status = Buffs.BuffStatusFor(name)
+    if not status or #status == 0 then return end
+
+    ImGui.TextDisabled("      buffs:")
+    for _, s in ipairs(status) do
+        ImGui.SameLine()
+        local color
+        if s.Status == "fresh" then
+            color = { 0.2, 1.0, 0.2, 1.0 }
+        elseif s.Status == "expiring" then
+            color = { 1.0, 0.8, 0.2, 1.0 }
+        elseif s.Status == "covered" then
+            color = { 0.4, 0.7, 1.0, 1.0 }
+        elseif s.Status == "low" then
+            color = { 0.5, 0.5, 0.5, 1.0 }
+        else
+            color = { 1.0, 0.4, 0.4, 1.0 }
+        end
+        local label
+        if s.Status == "missing" then
+            label = string.format("%s:need", s.Name)
+        elseif s.Status == "covered" then
+            label = string.format("%s:covered", s.Name)
+        elseif s.Status == "low" then
+            label = string.format("%s:low", s.Name)
+        else
+            label = string.format("%s:%ds", s.Name, s.Remaining)
+        end
+        ImGui.TextColored(color[1], color[2], color[3], color[4], label)
+    end
 end
 
 ------------------------------------------------------------
@@ -248,12 +299,14 @@ function Widget.Draw()
 
     for i, player in ipairs(players) do
         DrawLeechRow(i, player)
+        DrawLeechBuffs(player.Name)
     end
 
     ImGui.Separator()
-    ImGui.TextDisabled(string.format("Emergencies: %d   Failed casts: %d",
+    ImGui.TextDisabled(string.format("Emergencies: %d   Failed casts: %d   Buffs cast: %d",
         State.Stats.Emergencies or 0,
-        State.Stats.FailedCasts or 0))
+        State.Stats.FailedCasts or 0,
+        State.Stats.BuffsCast or 0))
 end
 
 return Widget

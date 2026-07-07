@@ -10,6 +10,7 @@ local State     = require('state')
 local Window    = require('window')
 local Spells    = require('spells')
 local WatchList = require('watchlist')
+local Config    = require('config')
 
 local Commands = {}
 
@@ -21,7 +22,7 @@ local bound = false
 
 local function Usage()
     print("[CLEPLER] usage: /clepler on|off|pause|ui|reloadspells" ..
-          "|add <name>|remove <name>|debug|test|status|quit")
+          "|add <name>|remove <name>|debug|test|buffs|status|quit")
 end
 
 ------------------------------------------------------------
@@ -29,11 +30,12 @@ end
 ------------------------------------------------------------
 
 local function Status()
-    print(string.format("[CLEPLER] v%s  enabled=%s  paused=%s  test=%s",
+    print(string.format("[CLEPLER] v%s  enabled=%s  paused=%s  test=%s  buffs=%s",
         tostring(State.Version),
         tostring(State.Enabled),
         tostring(State.Paused),
-        tostring(State.Settings.TestMode)))
+        tostring(State.Settings.TestMode),
+        tostring(State.Settings.Buffing)))
     print(string.format("[CLEPLER] watchlist entries: %d",
         #(WatchList.GetPlayers() or {})))
 end
@@ -94,6 +96,12 @@ local function Handler(...)
         State.Settings.TestMode = not State.Settings.TestMode
         print(string.format("[CLEPLER] testmode=%s (dry run, no casts)",
             tostring(State.Settings.TestMode)))
+
+    elseif cmd == "buffs" then
+        State.Settings.Buffing = not State.Settings.Buffing
+        print(string.format("[CLEPLER] buffing=%s",
+            tostring(State.Settings.Buffing)))
+        Config.Save()
 
     elseif cmd == "status" then
         Status()

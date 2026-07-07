@@ -50,6 +50,14 @@ State.Settings = {
     HoTPct           = 85,
     HealWatchList     = true,
     MaxHealRange      = 200,
+    -- Buff checker (see buffs.lua). Level-aware: each buff entry
+    -- in healprofiles.lua carries a MinLevel for the recipient.
+    Buffing             = true,    -- master toggle for buff casting
+    BuffInterval        = 2000,    -- ms between buff pulses
+    BuffRefreshBuffer   = 120,     -- sec early-refresh safety margin
+    BuffGroup           = false,   -- also buff group members (not just leeches)
+    BuffMinManaPct      = 20,      -- skip buffing below this mana %
+    BuffDefaultDurationSec = 1800,  -- fallback when MQ reports no duration
     Debug            = false,
 }
 
@@ -65,11 +73,17 @@ State.WatchList = {}
 -- Optional spell-role overrides (reserved for future use).
 State.SpellRoles = {}
 
+-- Buff tracker: keyed by "<LowerName>||<BuffName>" ->
+-- { CastAt = ms, Duration = sec }. Maintained by buffs.lua.
+-- Uses character name (not spawn id) so it survives zoning.
+State.BuffTracker = {}
+
 -- Simple runtime counters.
 State.Stats = {
     HealsCast     = 0,
     Emergencies   = 0,
     FailedCasts   = 0,
+    BuffsCast     = 0,
 }
 
 return State

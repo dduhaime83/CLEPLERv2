@@ -64,6 +64,32 @@ function Spells.GemFor(name)
 end
 
 ------------------------------------------------------------
+-- Substring match across the gem cache.
+-- Used by the buff checker: a profile entry names a base
+-- spell (e.g. "Symbol") whose memorized instance may differ
+-- (e.g. "Symbol of Ryltan"). Returns the first memorized
+-- spell record whose name contains `substr` (case-insensitive),
+-- or nil.
+------------------------------------------------------------
+
+function Spells.FindByMatch(substr)
+    if not substr or substr == "" then
+        return nil
+    end
+    local needle = substr:lower()
+    -- Deterministic: scan gems 1..12 in order rather than
+    -- relying on pairs() hash order over the name-keyed table.
+    for gem = 1, 12 do
+        local record = Spells.Database.ByGem[gem]
+        local name = record and record.Name
+        if name and name:lower():find(needle, 1, true) then
+            return record
+        end
+    end
+    return nil
+end
+
+------------------------------------------------------------
 -- Readiness / cost / range
 --   Me.SpellReady(name) -> true when not on recovery/recast
 --   Spell(name).Mana()  -> mana cost
@@ -99,6 +125,31 @@ function Spells.Range(name)
         end)
     end
     return value or 0
+end
+
+------------------------------------------------------------
+-- Spell duration in seconds.
+--   Spell(name).MyDuration() returns ticks (1 tick = 6 sec);
+--   falls back to .Duration(), then to the configured default.
+------------------------------------------------------------
+
+function Spells.Duration(name)
+    if not name then return 0 end
+    local ticks = SafeCall(function()
+        return mq.TLO.Spell(name).MyDuration()
+    end)
+    if not ticks or ticks <= 0 then
+        ticks = SafeCall(function()
+            return mq.TLO.Spell(name).Duration()
+        end)
+    end
+    if ticks and ticks > 0 then
+        return ticks * 6
+    end
+    -- Fall back to the configured default so the tracker still
+    -- ages the buff out on schedule.
+    local State = require('state')
+    return State.Settings.BuffDefaultDurationSec or 1800
 end
 
 return Spells

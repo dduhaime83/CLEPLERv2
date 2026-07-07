@@ -16,10 +16,14 @@
 --========================================================--
 
 local mq = require('mq')
+local State = require('state')
+local WatchList = require('watchlist')
 
 local Scanner = {}
 
 Scanner.Group = {}
+Scanner.WatchMembers = {}
+Scanner.All = {}
 Scanner.MainTank = nil
 Scanner.AssistTarget = nil
 Scanner.LowestMember = nil
@@ -96,6 +100,64 @@ local function SafeDead(spawn)
 end
 
 ------------------------------------------------------------
+-- Line of sight
+------------------------------------------------------------
+
+local function SafeLOS(spawn)
+    if not spawn then
+        return false
+    end
+
+    local ok, value = pcall(function()
+        return spawn.LineOfSight()
+    end)
+
+    if ok then
+        return value == true
+    end
+
+    return false
+end
+
+------------------------------------------------------------
+-- Resolve a watchlist leech to an in-zone spawn.
+-- Exact PC match only; returns nil if not found/valid.
+------------------------------------------------------------
+
+local function ResolveSpawn(name)
+    if not name or name == "" then
+        return nil
+    end
+
+    local candidates = {
+        "pc =" .. name,
+        "=" .. name,
+    }
+
+    for _, query in ipairs(candidates) do
+        local spawn
+        local okSpawn = pcall(function()
+            spawn = mq.TLO.Spawn(query)
+        end)
+        if okSpawn and spawn then
+            -- Validate: must be a real PC with an exact
+            -- (case-insensitive) name match. Use both pcall
+            -- returns, not just the first.
+            local okValid, matches = pcall(function()
+                return spawn()
+                    and spawn.Type() == "PC"
+                    and (spawn.CleanName() or ""):lower() == name:lower()
+            end)
+            if okValid and matches then
+                return spawn
+            end
+        end
+    end
+
+    return nil
+end
+
+------------------------------------------------------------
 -- Build one member record
 ------------------------------------------------------------
 
@@ -121,8 +183,40 @@ local function BuildMember(index)
         Aggro = SafeAggro(spawn),
         Distance = SafeDistance(spawn),
         Dead = SafeDead(spawn),
+        LineOfSight = SafeLOS(spawn),
         Pet = member.Pet() or false,
         Spawn = spawn,
+        Watchlist = false,
+        Priority = 999,
+    }
+
+    return record
+end
+
+------------------------------------------------------------
+-- Build one watchlist leech record from a spawn lookup
+------------------------------------------------------------
+
+local function BuildWatchMember(name, priority)
+    local spawn = ResolveSpawn(name)
+    if not spawn then
+        return nil
+    end
+
+    local record = {
+        ID = spawn.ID() or 0,
+        Name = spawn.CleanName() or name,
+        Class = (spawn.Class and spawn.Class.ShortName()) or "",
+        Level = spawn.Level() or 0,
+        HP = SafePct(spawn),
+        Aggro = SafeAggro(spawn),
+        Distance = SafeDistance(spawn),
+        Dead = SafeDead(spawn),
+        LineOfSight = SafeLOS(spawn),
+        Pet = false,
+        Spawn = spawn,
+        Watchlist = true,
+        Priority = priority or 999,
     }
 
     return record
@@ -192,6 +286,34 @@ local function DetectCombat()
 end
 
 ------------------------------------------------------------
+-- Build watchlist leech records (out-of-group targets)
+-- Skips disabled entries, self, and names already in the
+-- group (dedupe by ID).
+------------------------------------------------------------
+
+local function BuildWatchMembers(seenIDs)
+    Scanner.WatchMembers = {}
+
+    if not State.Settings.HealWatchList then
+        return
+    end
+
+    local meID = mq.TLO.Me.ID() or 0
+    -- self is already marked seen by Scanner.Update(); nothing
+    -- to do here.
+
+    for i, player in ipairs(State.WatchList) do
+        if player.Enabled and player.Name and player.Name ~= "" then
+            local record = BuildWatchMember(player.Name, i)
+            if record and record.ID ~= 0 and not seenIDs[record.ID] then
+                seenIDs[record.ID] = true
+                table.insert(Scanner.WatchMembers, record)
+            end
+        end
+    end
+end
+
+------------------------------------------------------------
 -- Lowest HP
 ------------------------------------------------------------
 
@@ -199,7 +321,7 @@ local function FindLowest()
     Scanner.LowestHP = 100
     Scanner.LowestMember = nil
 
-    for _, member in ipairs(Scanner.Group) do
+    for _, member in ipairs(Scanner.All) do
         if not member.Dead then
             if member.HP < Scanner.LowestHP then
                 Scanner.LowestHP = member.HP
@@ -220,27 +342,54 @@ local function FindLowest()
             Aggro = mq.TLO.Me.PctAggro(),
             Distance = 0,
             Dead = mq.TLO.Me.Dead(),
+            LineOfSight = true,
             Spawn = mq.TLO.Me,
+            Watchlist = false,
+            Priority = 999,
         }
     end
 end
 
 ------------------------------------------------------------
--- Update group cache
+-- Update group + watchlist cache
 ------------------------------------------------------------
 
 function Scanner.Update()
 
     Scanner.Group = {}
+    Scanner.WatchMembers = {}
+    Scanner.All = {}
+
+    local seenIDs = {}
+
+    -- Exclude self from the group/watchlist lists; healqueue
+    -- adds self separately. (Some MQ builds include self in
+    -- Group.Member(i), so mark it seen before the loop.)
+    local meID = mq.TLO.Me.ID() or 0
+    if meID ~= 0 then
+        seenIDs[meID] = true
+    end
 
     local members = mq.TLO.Group.Members() or 0
 
     for i = 1, members do
         local record = BuildMember(i)
 
-        if record then
+        if record and record.ID ~= 0 and not seenIDs[record.ID] then
+            seenIDs[record.ID] = true
             table.insert(Scanner.Group, record)
         end
+    end
+
+    BuildWatchMembers(seenIDs)
+
+    -- All = group + watchlist leeches (self excluded; healqueue
+    -- adds self separately).
+    for _, m in ipairs(Scanner.Group) do
+        table.insert(Scanner.All, m)
+    end
+    for _, m in ipairs(Scanner.WatchMembers) do
+        table.insert(Scanner.All, m)
     end
 
     DetectMainTank()
@@ -263,6 +412,14 @@ function Scanner.GetGroup()
     return Scanner.Group
 end
 
+function Scanner.GetWatchMembers()
+    return Scanner.WatchMembers
+end
+
+function Scanner.GetAll()
+    return Scanner.All
+end
+
 function Scanner.GetMainTank()
     return Scanner.MainTank
 end
@@ -280,7 +437,7 @@ function Scanner.MemberCount()
 end
 
 function Scanner.AnyoneBelow(percent)
-    for _, member in ipairs(Scanner.Group) do
+    for _, member in ipairs(Scanner.All) do
         if not member.Dead and member.HP <= percent then
             return true
         end
@@ -296,13 +453,18 @@ function Scanner.AnyoneBelow(percent)
 end
 
 function Scanner.FindByName(name)
-    for _, member in ipairs(Scanner.Group) do
-        if member.Name == name then
+    local needle = (name or ""):lower()
+    if needle == "" then
+        return nil
+    end
+
+    for _, member in ipairs(Scanner.All) do
+        if member.Name and member.Name:lower() == needle then
             return member
         end
     end
 
-    if mq.TLO.Me.CleanName() == name then
+    if (mq.TLO.Me.CleanName() or ""):lower() == needle then
         return {
             ID = mq.TLO.Me.ID(),
             Name = mq.TLO.Me.CleanName(),
@@ -310,11 +472,20 @@ function Scanner.FindByName(name)
             Aggro = mq.TLO.Me.PctAggro(),
             Distance = 0,
             Dead = mq.TLO.Me.Dead(),
+            LineOfSight = true,
             Spawn = mq.TLO.Me,
+            Watchlist = false,
+            Priority = 999,
         }
     end
 
     return nil
 end
+
+------------------------------------------------------------
+-- Alias: init.lua registers "Scanner.Scan" as a Heartbeat
+-- task. Expose Scan -> Update so both names work.
+------------------------------------------------------------
+Scanner.Scan = Scanner.Update
 
 return Scanner

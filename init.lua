@@ -30,10 +30,11 @@ State.Running=true
 print("[CLEPLER] v"..State.Version.." Loaded")
 
 while State.Running do
+    mq.doevents()
     if not State.Paused then
         Heartbeat.Pulse()
     end
-    mq.delay(1)
+    mq.delay(10)
 end
 
 Commands.Unregister()

@@ -36,6 +36,8 @@ local DND_TYPE = "CLEPLER_WATCH_ROW"
 
 -- Input buffer for the add-target field (persists across frames)
 Widget.addBuf = ""
+-- Input buffer for the remove-by-name field (persists across frames)
+Widget.removeBuf = ""
 
 ------------------------------------------------------------
 -- Color helpers
@@ -315,6 +317,31 @@ local function DrawAddRow()
                 Widget.addBuf = ""
             else
                 print("[CLEPLER] add failed (missing or duplicate name)")
+            end
+        end
+    end
+
+    -- Remove-by-name: counterpart to Add. Lets you drop a leech
+    -- by typing its name without finding its row (e.g. one that
+    -- logged out / isn't in zone and isn't currently listed).
+    ImGui.SameLine()
+    ImGui.Text("Remove:")
+    ImGui.SameLine()
+    local rtext, rchanged = ImGui.InputText("##removetarget", Widget.removeBuf, 0)
+    if rchanged then
+        Widget.removeBuf = rtext or ""
+    end
+
+    ImGui.SameLine()
+    if ImGui.Button("Remove Name") then
+        local name = Widget.removeBuf and Widget.removeBuf:gsub("^%s+", ""):gsub("%s+$", "")
+        if name and name ~= "" then
+            if WatchList.Remove(name) then
+                WatchList.Save()
+                Widget.removeBuf = ""
+                print(string.format("[CLEPLER] removed '%s' from watchlist", name))
+            else
+                print(string.format("[CLEPLER] remove failed ('%s' not on watchlist)", name))
             end
         end
     end

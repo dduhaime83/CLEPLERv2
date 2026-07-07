@@ -14,6 +14,7 @@ local mq     = require('mq')
 local State  = require('state')
 local Spells = require('spells')
 local Targeting = require('targeting')
+local Follow = require('follow')
 
 local Caster = {}
 
@@ -159,8 +160,14 @@ function Caster.Cast(spellName, targetID, entry)
         oldTarget = Targeting.Save()
     end
 
+    -- Movement interrupts spell casting in EQ. Stop following
+    -- BEFORE the settle delay so the PLer is still by the time
+    -- /cast fires. (mq.delay below gives /stick off time to land.)
+    Follow.PauseForCast()
+
     Targeting.Set(targetID)
     mq.delay(100)
+
     mq.cmd("/cast " .. tostring(gem))
 
     Caster.LastAttempt  = now

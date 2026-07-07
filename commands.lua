@@ -13,6 +13,7 @@ local WatchList = require('watchlist')
 local Config    = require('config')
 local Spellbook = require('spellbook')
 local Hots      = require('hots')
+local Follow    = require('follow')
 
 local Commands = {}
 
@@ -24,7 +25,7 @@ local bound = false
 
 local function Usage()
     print("[CLEPLER] usage: /clepler on|off|pause|ui|reloadspells" ..
-          "|add <name>|remove <name>|mem <gem> <spell>|debug|test|buffs|hots|med|status|quit")
+          "|add <name>|remove <name>|mem <gem> <spell>|debug|test|buffs|hots|med|follow|status|quit")
 end
 
 ------------------------------------------------------------
@@ -32,14 +33,16 @@ end
 ------------------------------------------------------------
 
 local function Status()
-    print(string.format("[CLEPLER] v%s  enabled=%s  paused=%s  test=%s  buffs=%s  hots=%s  med=%s",
+    print(string.format("[CLEPLER] v%s  enabled=%s  paused=%s  test=%s  buffs=%s  hots=%s  med=%s  follow=%s",
         tostring(State.Version),
         tostring(State.Enabled),
         tostring(State.Paused),
         tostring(State.Settings.TestMode),
         tostring(State.Settings.Buffing),
         tostring(State.Settings.HotRolling),
-        tostring(State.Settings.MedBreaks)))
+        tostring(State.Settings.MedBreaks),
+        tostring(State.Settings.FollowEnabled)))
+    print(string.format("[CLEPLER] follow status: %s", Follow.Status()))
     print(string.format("[CLEPLER] watchlist entries: %d",
         #(WatchList.GetPlayers() or {})))
 end
@@ -62,10 +65,14 @@ local function Handler(...)
 
     elseif cmd == "off" then
         State.Enabled = false
+        Follow.Stop("off")
         print("[CLEPLER] healing disabled")
 
     elseif cmd == "pause" then
         State.Paused = not State.Paused
+        if State.Paused then
+            Follow.Stop("paused")
+        end
         print(string.format("[CLEPLER] %s", State.Paused and "PAUSED" or "resumed"))
 
     elseif cmd == "ui" then
@@ -144,10 +151,20 @@ local function Handler(...)
             tostring(State.Settings.MedBreaks)))
         Config.Save()
 
+    elseif cmd == "follow" then
+        State.Settings.FollowEnabled = not State.Settings.FollowEnabled
+        if not State.Settings.FollowEnabled then
+            Follow.Stop("off")
+        end
+        print(string.format("[CLEPLER] follow=%s  (%s)",
+            tostring(State.Settings.FollowEnabled), Follow.Status()))
+        Config.Save()
+
     elseif cmd == "status" then
         Status()
 
     elseif cmd == "quit" or cmd == "exit" then
+        Follow.Stop("quit")
         State.Running = false
         print("[CLEPLER] shutting down")
 

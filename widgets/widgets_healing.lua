@@ -20,6 +20,7 @@ local WatchList = require('watchlist')
 local Scanner  = require('scanner')
 local HealQueue = require('healqueue')
 local Buffs    = require('buffs')
+local Hots     = require('hots')
 local Config   = require('config')
 
 local Widget = {}
@@ -120,7 +121,51 @@ local function DrawHeader()
         Config.Save()
     end
 
+    -- HotRolling toggle (persisted).
+    ImGui.SameLine()
+    ImGui.Text("   |   HoT:")
+    ImGui.SameLine()
+    local hotOn, hotPressed = ImGui.Checkbox("##hotrolling",
+        State.Settings.HotRolling == true)
+    if hotPressed then
+        State.Settings.HotRolling = hotOn
+        Config.Save()
+    end
+
     ImGui.Separator()
+end
+
+------------------------------------------------------------
+-- HoT status for one leech (tracker-based).
+------------------------------------------------------------
+
+local function DrawLeechHots(name)
+    local status = Hots.HotStatusFor(name)
+    if not status or #status == 0 then return end
+
+    ImGui.TextDisabled("      HoT:")
+    for _, s in ipairs(status) do
+        ImGui.SameLine()
+        local color
+        if s.Status == "fresh" then
+            color = { 0.2, 1.0, 0.2, 1.0 }
+        elseif s.Status == "expiring" then
+            color = { 1.0, 0.8, 0.2, 1.0 }
+        elseif s.Status == "covered" then
+            color = { 0.4, 0.7, 1.0, 1.0 }
+        else
+            color = { 1.0, 0.4, 0.4, 1.0 }
+        end
+        local label
+        if s.Status == "down" then
+            label = string.format("%s:down", s.Name)
+        elseif s.Status == "covered" then
+            label = string.format("%s:covered", s.Name)
+        else
+            label = string.format("%s:%ds", s.Name, s.Remaining)
+        end
+        ImGui.TextColored(color[1], color[2], color[3], color[4], label)
+    end
 end
 
 ------------------------------------------------------------
@@ -300,13 +345,15 @@ function Widget.Draw()
     for i, player in ipairs(players) do
         DrawLeechRow(i, player)
         DrawLeechBuffs(player.Name)
+        DrawLeechHots(player.Name)
     end
 
     ImGui.Separator()
-    ImGui.TextDisabled(string.format("Emergencies: %d   Failed casts: %d   Buffs cast: %d",
+    ImGui.TextDisabled(string.format("Emergencies: %d   Failed casts: %d   Buffs cast: %d   HoTs cast: %d",
         State.Stats.Emergencies or 0,
         State.Stats.FailedCasts or 0,
-        State.Stats.BuffsCast or 0))
+        State.Stats.BuffsCast or 0,
+        State.Stats.HotsCast or 0))
 end
 
 return Widget

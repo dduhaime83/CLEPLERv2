@@ -12,6 +12,7 @@ local Spells    = require('spells')
 local WatchList = require('watchlist')
 local Config    = require('config')
 local Spellbook = require('spellbook')
+local Hots      = require('hots')
 
 local Commands = {}
 
@@ -23,7 +24,7 @@ local bound = false
 
 local function Usage()
     print("[CLEPLER] usage: /clepler on|off|pause|ui|reloadspells" ..
-          "|add <name>|remove <name>|mem <gem> <spell>|debug|test|buffs|status|quit")
+          "|add <name>|remove <name>|mem <gem> <spell>|debug|test|buffs|hots|status|quit")
 end
 
 ------------------------------------------------------------
@@ -31,12 +32,13 @@ end
 ------------------------------------------------------------
 
 local function Status()
-    print(string.format("[CLEPLER] v%s  enabled=%s  paused=%s  test=%s  buffs=%s",
+    print(string.format("[CLEPLER] v%s  enabled=%s  paused=%s  test=%s  buffs=%s  hots=%s",
         tostring(State.Version),
         tostring(State.Enabled),
         tostring(State.Paused),
         tostring(State.Settings.TestMode),
-        tostring(State.Settings.Buffing)))
+        tostring(State.Settings.Buffing),
+        tostring(State.Settings.HotRolling)))
     print(string.format("[CLEPLER] watchlist entries: %d",
         #(WatchList.GetPlayers() or {})))
 end
@@ -127,6 +129,12 @@ local function Handler(...)
         State.Settings.Buffing = not State.Settings.Buffing
         print(string.format("[CLEPLER] buffing=%s",
             tostring(State.Settings.Buffing)))
+        Config.Save()
+
+    elseif cmd == "hots" then
+        State.Settings.HotRolling = not State.Settings.HotRolling
+        print(string.format("[CLEPLER] hot rolling=%s",
+            tostring(State.Settings.HotRolling)))
         Config.Save()
 
     elseif cmd == "status" then

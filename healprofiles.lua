@@ -137,14 +137,23 @@ Profiles.Default = {
 
     HoT = {
 
+        -- Proactive rolling HoTs. Listed highest preference
+        -- first. Match is a substring fallback against the
+        -- memorized spell name (e.g. "Celestial" matches
+        -- "Celestial Renewal"). Category="Hot" routes the cast
+        -- counter to State.Stats.HotsCast (see caster.lua).
         {
             Name = "Celestial Renewal",
+            Match = "Celestial",
             Type = "Spell",
+            Category = "Hot",
         },
 
         {
             Name = "Elixir",
+            Match = "Elixir",
             Type = "Spell",
+            Category = "Hot",
         },
 
     },
@@ -380,6 +389,16 @@ end
 function Profiles.Buffs()
 
     return Profiles.Active.Buffs
+
+end
+
+------------------------------------------------------------
+-- Get HoT list
+------------------------------------------------------------
+
+function Profiles.Hots()
+
+    return Profiles.Active.HoT
 
 end
 

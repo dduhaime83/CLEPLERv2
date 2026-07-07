@@ -120,6 +120,17 @@ local function SafeLOS(spawn)
 end
 
 ------------------------------------------------------------
+-- pcall wrapper for TLO reads that may be absent in some
+-- MQ builds (e.g. XTarget).
+------------------------------------------------------------
+
+local function SafeCall(fn)
+    local ok, value = pcall(fn)
+    if ok then return value end
+    return nil
+end
+
+------------------------------------------------------------
 -- Resolve a watchlist leech to an in-zone spawn.
 -- Exact PC match only; returns nil if not found/valid.
 ------------------------------------------------------------
@@ -272,14 +283,37 @@ end
 local function DetectCombat()
     Scanner.GroupInCombat = false
 
-    local xt = mq.TLO.XTarget
+    -- Some MQ Lua builds expose XTarget differently, or not at
+    -- all (VeryVanilla returns nil for mq.TLO.XTarget as a
+    -- table reference). Treat it as optional and never let it
+    -- break the scanner heartbeat.
+    local xtCount = SafeCall(function()
+        if mq.TLO.XTarget then
+            return mq.TLO.XTarget()
+        end
+        return nil
+    end)
 
-    if xt() and xt() > 0 then
+    if not xtCount then
+        xtCount = SafeCall(function()
+            if mq.TLO.Me and mq.TLO.Me.XTarget then
+                return mq.TLO.Me.XTarget()
+            end
+            return nil
+        end)
+    end
+
+    xtCount = tonumber(xtCount) or 0
+    if xtCount > 0 then
         Scanner.GroupInCombat = true
         return
     end
 
-    if mq.TLO.Me.CombatState() == "COMBAT" then
+    local combatState = SafeCall(function()
+        return mq.TLO.Me.CombatState()
+    end)
+
+    if combatState == "COMBAT" then
         Scanner.GroupInCombat = true
         return
     end

@@ -62,6 +62,8 @@ function Config.Reset()
         CompleteHealPct = 40,
         UseHoT = false,
         HoTPct = 85,
+        HealWatchList = true,
+        MaxHealRange = 200,
         Debug = false,
     }
 

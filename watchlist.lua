@@ -2,12 +2,12 @@
 -- CLEPLER
 -- watchlist.lua
 --
--- Named leech roster with INI persistence.
+-- Ordered roster of out-of-group leeches (the primary heal
+-- focus). Array index == heal priority (1 = highest).
+-- Reordering the array reorders priority.
 --
--- NOTE (v1): Healing currently targets the group only. The
--- watchlist is loaded/saved and editable via /clepler add &
--- remove, but is NOT yet merged into the scanner. Wiring
--- watchlist names into Scanner + HealQueue is the next step.
+-- Persisted to CLEPLER_WatchList.ini as Player1..N in array
+-- order, so INI order == priority.
 ------------------------------------------------------------
 
 local mq    = require('mq')
@@ -19,12 +19,26 @@ WatchList.File    = mq.configDir .. "\\CLEPLER_WatchList.ini"
 WatchList.Section = "Players"
 
 ------------------------------------------------------------
--- Record factory (persisted fields only: Name, Enabled)
+-- Record factory
 ------------------------------------------------------------
 
 local function NewPlayer(name)
-    return { Name = name, Enabled = true }
+    return { Name = name, Enabled = true, Priority = 1 }
 end
+
+------------------------------------------------------------
+-- Normalize: ensure each entry's Priority matches its index
+------------------------------------------------------------
+
+function WatchList.Normalize()
+    for i, p in ipairs(State.WatchList) do
+        p.Priority = i
+    end
+end
+
+------------------------------------------------------------
+-- Lookup
+------------------------------------------------------------
 
 local function FindIndex(name)
     if not name then return nil end
@@ -56,10 +70,15 @@ function WatchList.GetPlayers()
     return State.WatchList
 end
 
+function WatchList.Count()
+    return #State.WatchList
+end
+
 function WatchList.Add(name)
     if not name or name == "" then return false end
     if FindIndex(name) then return false end          -- dedupe
     table.insert(State.WatchList, NewPlayer(name))
+    WatchList.Normalize()
     return true
 end
 
@@ -67,7 +86,37 @@ function WatchList.Remove(name)
     local idx = FindIndex(name)
     if not idx then return false end
     table.remove(State.WatchList, idx)
+    WatchList.Normalize()
     return true
+end
+
+function WatchList.RemoveAt(index)
+    if index < 1 or index > #State.WatchList then return false end
+    table.remove(State.WatchList, index)
+    WatchList.Normalize()
+    return true
+end
+
+-- Move entry at `from` to `to`, shifting others.
+function WatchList.Move(from, to)
+    local n = #State.WatchList
+    if from < 1 or from > n then return false end
+    if to < 1 then to = 1 end
+    if to > n then to = n end
+    if from == to then return false end
+
+    local entry = table.remove(State.WatchList, from)
+    table.insert(State.WatchList, to, entry)
+    WatchList.Normalize()
+    return true
+end
+
+function WatchList.MoveUp(index)
+    return WatchList.Move(index, index - 1)
+end
+
+function WatchList.MoveDown(index)
+    return WatchList.Move(index, index + 1)
 end
 
 function WatchList.SetEnabled(name, enabled)
@@ -77,8 +126,14 @@ function WatchList.SetEnabled(name, enabled)
     return true
 end
 
+function WatchList.ToggleEnabled(index)
+    if index < 1 or index > #State.WatchList then return false end
+    State.WatchList[index].Enabled = not State.WatchList[index].Enabled
+    return true
+end
+
 ------------------------------------------------------------
--- Persistence
+-- Persistence (order == priority)
 ------------------------------------------------------------
 
 function WatchList.Load()
@@ -96,12 +151,13 @@ function WatchList.Load()
         end
     end
 
+    WatchList.Normalize()
+
     print(string.format("[CLEPLER] watchlist loaded: %d entries", #State.WatchList))
 end
 
 function WatchList.Save()
 
-    -- Clear the section by writing a fresh Count first.
     mq.cmdf('/ini "%s" "%s" "%s" "%s"',
         WatchList.File, WatchList.Section, "Count", #State.WatchList)
 

@@ -15,6 +15,7 @@
 --========================================================--
 
 local mq = require('mq')
+local State = require('state')
 
 local HealQueue = {}
 
@@ -22,20 +23,25 @@ HealQueue.Queue = {}
 HealQueue.LastBuild = 0
 
 ------------------------------------------------------------
--- Priority Weights
+-- Priority tiers (higher = healed first)
+--
+-- Powerlevel model: the out-of-group leech is the primary
+-- focus. Only the PLer's own critical survival outranks a
+-- leech (a dead PLer heals no one). Group members are last.
 ------------------------------------------------------------
 
 local PRIORITY = {
-    SELF_EMERGENCY = 1000,
-    TANK_EMERGENCY = 950,
-    PLAYER_EMERGENCY = 900,
-
-    SELF = 800,
-    MAIN_TANK = 700,
-    GROUP = 600,
-
-    LIGHT = 100,
+    SELF_EMERGENCY   = 1000,
+    LEECH_EMERGENCY  = 900,
+    LEECH            = 800,
+    SELF             = 700,
+    GROUP_EMERGENCY  = 600,
+    GROUP            = 500,
 }
+
+-- Emergency HP threshold for triage tiering (independent of
+-- the per-spell FastHealPct used by the healer).
+local EMERGENCY_HP = 35
 
 ------------------------------------------------------------
 -- Internal
@@ -47,6 +53,9 @@ end
 
 ------------------------------------------------------------
 -- Queue member
+--
+-- Stores tier + watchlist priority + HP for a correct
+-- multi-field sort (see Sort()).
 ------------------------------------------------------------
 
 local function Evaluate(member, scanner)
@@ -60,70 +69,101 @@ local function Evaluate(member, scanner)
     end
 
     local hp = member.HP or 100
-
-    local priority = nil
+    local isSelf = (member.ID == mq.TLO.Me.ID())
+    local isLeech = member.Watchlist == true
 
     --------------------------------------------------------
-
-    if member.Name == mq.TLO.Me.CleanName() then
-
-        if hp <= 20 then
-            priority = PRIORITY.SELF_EMERGENCY
-        elseif hp <= 60 then
-            priority = PRIORITY.SELF
+    -- Range / LOS gating: skip unreachable targets so they
+    -- don't starve reachable ones. (Self is always reachable.)
+    --------------------------------------------------------
+    if not isSelf then
+        if not State.Settings.IgnoreRange
+            and member.Distance
+            and member.Distance > State.Settings.MaxHealRange then
+            return
         end
 
-    elseif scanner.GetMainTank()
-        and member.Name == scanner.GetMainTank() then
+        if not State.Settings.IgnoreLOS
+            and member.LineOfSight == false then
+            return
+        end
+    end
 
-        if hp <= 25 then
-            priority = PRIORITY.TANK_EMERGENCY
-        elseif hp <= 70 then
-            priority = PRIORITY.MAIN_TANK
+    --------------------------------------------------------
+    -- Tier assignment
+    --------------------------------------------------------
+    local tier
+
+    if isSelf then
+        if hp <= 20 then
+            tier = PRIORITY.SELF_EMERGENCY
+        elseif hp <= 60 then
+            tier = PRIORITY.SELF
+        else
+            return          -- self is healthy; nothing to do
+        end
+
+    elseif isLeech then
+        if hp <= EMERGENCY_HP then
+            tier = PRIORITY.LEECH_EMERGENCY
+        elseif hp <= 75 then
+            tier = PRIORITY.LEECH
+        else
+            return
         end
 
     else
-
+        -- Group member (secondary in a PL)
         if hp <= 20 then
-            priority = PRIORITY.PLAYER_EMERGENCY
+            tier = PRIORITY.GROUP_EMERGENCY
         elseif hp <= 75 then
-            priority = PRIORITY.GROUP
-        elseif hp <= 90 then
-            priority = PRIORITY.LIGHT
+            tier = PRIORITY.GROUP
+        else
+            return
         end
-
     end
 
-    --------------------------------------------------------
-
-    if priority then
-
-        Insert({
-            Name = member.Name,
-            ID = member.ID,
-            HP = hp,
-            Aggro = member.Aggro or 0,
-            Distance = member.Distance or 9999,
-            Priority = priority - hp,
-            Record = member,
-        })
-
-    end
+    Insert({
+        Name = member.Name,
+        ID = member.ID,
+        HP = hp,
+        Aggro = member.Aggro or 0,
+        Distance = member.Distance or 9999,
+        LineOfSight = member.LineOfSight,
+        Watchlist = isLeech,
+        WatchPriority = member.Priority or 999,
+        Tier = tier,
+        Record = member,
+    })
 end
 
 ------------------------------------------------------------
 -- Sort queue
+--
+-- Emergency leeches: HP first, then watchlist priority.
+-- Everyone else: watchlist priority first, then HP.
 ------------------------------------------------------------
 
 local function Sort()
 
     table.sort(HealQueue.Queue, function(a, b)
 
-        if a.Priority == b.Priority then
-            return a.HP < b.HP
+        if a.Tier ~= b.Tier then
+            return a.Tier > b.Tier
         end
 
-        return a.Priority > b.Priority
+        if a.Tier == PRIORITY.LEECH_EMERGENCY then
+            if a.HP ~= b.HP then
+                return a.HP < b.HP
+            end
+            return (a.WatchPriority or 999) < (b.WatchPriority or 999)
+        end
+
+        if (a.WatchPriority or 999) ~= (b.WatchPriority or 999) then
+            return (a.WatchPriority or 999) < (b.WatchPriority or 999)
+        end
+
+        return a.HP < b.HP
 
     end)
 
@@ -141,7 +181,9 @@ function HealQueue.Build(scanner)
         return
     end
 
-    local members = scanner.GetGroup()
+    -- Prefer the merged list (group + watchlist leeches);
+    -- fall back to group-only for older scanner builds.
+    local members = scanner.GetAll and scanner.GetAll() or scanner.GetGroup() or {}
 
     for _, member in ipairs(members) do
         Evaluate(member, scanner)
@@ -158,6 +200,9 @@ function HealQueue.Build(scanner)
         Aggro = mq.TLO.Me.PctAggro(),
         Distance = 0,
         Dead = mq.TLO.Me.Dead(),
+        LineOfSight = true,
+        Watchlist = false,
+        Priority = 999,
     }
 
     Evaluate(me, scanner)
@@ -246,7 +291,7 @@ function HealQueue.Priority()
         return 0
     end
 
-    return HealQueue.Queue[1].Priority
+    return HealQueue.Queue[1].Tier
 end
 
 ------------------------------------------------------------
@@ -268,13 +313,23 @@ end
 
 function HealQueue.Debug()
 
+    local tierName = {
+        [PRIORITY.SELF_EMERGENCY]  = "SELF_EMERGENCY",
+        [PRIORITY.LEECH_EMERGENCY] = "LEECH_EMERGENCY",
+        [PRIORITY.LEECH]           = "LEECH",
+        [PRIORITY.SELF]            = "SELF",
+        [PRIORITY.GROUP_EMERGENCY] = "GROUP_EMERGENCY",
+        [PRIORITY.GROUP]           = "GROUP",
+    }
+
     for i, entry in ipairs(HealQueue.Queue) do
         printf(
-            "%d %-18s HP:%3d Priority:%4d",
+            "%d %-18s HP:%3d Tier:%-16s WP:%d",
             i,
             entry.Name,
             entry.HP,
-            entry.Priority
+            tierName[entry.Tier] or tostring(entry.Tier),
+            entry.WatchPriority or 0
         )
     end
 

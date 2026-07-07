@@ -106,8 +106,11 @@ function Healer.Pulse()
     local ok = Caster.Cast(spellName, entry.ID, sp)
 
     if ok then
-        if State.Settings.AnnounceHeals and not State.Settings.TestMode then
-            -- Reserved for channel/group announce; kept quiet by default.
+        -- Count an emergency only when we actually acted on one
+        -- (cast or dry-run), not every pulse it sits atop the
+        -- queue while the caster is throttled.
+        if entry.Tier == 1000 or entry.Tier == 900 or entry.Tier == 600 then
+            State.Stats.Emergencies = State.Stats.Emergencies + 1
         end
     else
         -- Only count genuine failures (memorized/ready/mana/range/LOS).

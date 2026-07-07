@@ -18,10 +18,12 @@ local Hots=require('hots')
 local Med=require('med')
 local Follow=require('follow')
 local Spellbook=require('spellbook')
+local Loadout=require('loadout')
 local UI=require('ui')
 
 Config.Initialize()
 WatchList.Load()
+Loadout.Load()
 Spells.Refresh()
 Spellbook.Refresh()
 Commands.Register()
@@ -41,6 +43,9 @@ print("[CLEPLER] v"..State.Version.." Loaded")
 
 while State.Running do
     mq.doevents()
+    -- Loadout.Pulse drains the gem-mem queue unconditionally, so
+    -- re-gemming still progresses even while healing is paused.
+    Loadout.Pulse()
     if not State.Paused then
         Heartbeat.Pulse()
     end

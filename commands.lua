@@ -14,6 +14,7 @@ local Config    = require('config')
 local Spellbook = require('spellbook')
 local Hots      = require('hots')
 local Follow    = require('follow')
+local Loadout   = require('loadout')
 
 local Commands = {}
 
@@ -25,7 +26,7 @@ local bound = false
 
 local function Usage()
     print("[CLEPLER] usage: /clepler on|off|pause|ui|reloadspells" ..
-          "|add <name>|remove <name>|mem <gem> <spell>|debug|test|buffs|hots|med|follow|status|quit")
+          "|add <name>|remove <name>|mem <gem> <spell>|memall|debug|test|buffs|hots|med|follow|status|quit")
 end
 
 ------------------------------------------------------------
@@ -106,6 +107,14 @@ local function Handler(...)
             end
         end
 
+    elseif cmd == "memall" then
+        -- /clepler memall [cancel]
+        if args[2] == "cancel" then
+            Loadout.Cancel("manual")
+        else
+            Loadout.MemAll()
+        end
+
     elseif cmd == "add" then
         local name = args[2]
         if WatchList.Add(name) then
@@ -164,6 +173,7 @@ local function Handler(...)
         Status()
 
     elseif cmd == "quit" or cmd == "exit" then
+        Loadout.Cancel("quit")
         Follow.Stop("quit")
         State.Running = false
         print("[CLEPLER] shutting down")

@@ -15,6 +15,9 @@ local WatchList = require('watchlist')
 
 local Widget = {}
 
+-- Input buffer for the add-target field (persists across frames).
+Widget.addBuf = ""
+
 local function HPColor(hp)
     if hp >= 75 then return 0.2, 1.0, 0.2, 1.0 end
     if hp >= 40 then return 1.0, 0.8, 0.2, 1.0 end
@@ -60,15 +63,65 @@ function Widget.Draw()
 
     ImGui.Separator()
 
-    -- Watchlist leeches (primary focus)
-    local leeches = Scanner.GetWatchMembers and Scanner.GetWatchMembers() or {}
-    ImGui.Text(string.format("Leeches in zone: %d", #leeches))
-    for _, m in ipairs(leeches) do
-        Row(m.Name, m.HP, m.Distance, m.LineOfSight,
-            m.Dead and "dead" or "leech")
+    -- Watchlist management: add + remove targets directly from
+    -- the main tab so you don't have to switch to Healing.
+    ImGui.TextColored(0.6, 0.8, 1.0, 1.0, "Watchlist:")
+    ImGui.SameLine()
+    local text, changed = ImGui.InputText("##status_addtarget",
+        Widget.addBuf, 0)
+    if changed then
+        Widget.addBuf = text or ""
     end
-    if #leeches == 0 then
-        ImGui.TextDisabled("  none in range/zone")
+    ImGui.SameLine()
+    if ImGui.Button("Add Target") then
+        local name = Widget.addBuf and
+            Widget.addBuf:gsub("^%s+", ""):gsub("%s+$", "")
+        if name and name ~= "" then
+            if WatchList.Add(name) then
+                WatchList.Save()
+                Widget.addBuf = ""
+            else
+                print("[CLEPLER] add failed (missing or duplicate name)")
+            end
+        end
+    end
+
+    -- Watchlist leeches (primary focus). Show every roster entry
+    -- (not just in-zone ones) so you can remove offline targets too.
+    local roster = WatchList.GetPlayers() or {}
+    local inZone = Scanner.GetWatchMembers and Scanner.GetWatchMembers() or {}
+    local inZoneByName = {}
+    for _, m in ipairs(inZone) do
+        if m.Name then inZoneByName[m.Name:lower()] = m end
+    end
+
+    ImGui.Text(string.format("Targets (%d)", #roster))
+    for i, p in ipairs(roster) do
+        ImGui.PushID(i)
+        if ImGui.Button("Remove") then
+            WatchList.RemoveAt(i)
+            WatchList.Save()
+            ImGui.PopID()
+            -- Lua 5.1 has no goto; break out and let the rest of
+            -- the list redraw next frame (avoids shifted-index /
+            -- duplicate-ID issues from mutating mid-iteration).
+            break
+        end
+        ImGui.SameLine()
+        local rec = p.Name and inZoneByName[p.Name:lower()] or nil
+        if rec then
+            Row(p.Name or "?", rec.HP, rec.Distance, rec.LineOfSight,
+                rec.Dead and "dead" or
+                (p.Enabled == false and "off" or "leech"))
+        else
+            Row(p.Name or "?", nil, nil, nil,
+                p.Enabled == false and "off / not in zone"
+                                   or "not in zone")
+        end
+        ImGui.PopID()
+    end
+    if #roster == 0 then
+        ImGui.TextDisabled("  none -- add a target above")
     end
 
     ImGui.Separator()

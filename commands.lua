@@ -11,6 +11,7 @@ local Window    = require('window')
 local Spells    = require('spells')
 local WatchList = require('watchlist')
 local Config    = require('config')
+local Spellbook = require('spellbook')
 
 local Commands = {}
 
@@ -22,7 +23,7 @@ local bound = false
 
 local function Usage()
     print("[CLEPLER] usage: /clepler on|off|pause|ui|reloadspells" ..
-          "|add <name>|remove <name>|debug|test|buffs|status|quit")
+          "|add <name>|remove <name>|mem <gem> <spell>|debug|test|buffs|status|quit")
 end
 
 ------------------------------------------------------------
@@ -69,6 +70,31 @@ local function Handler(...)
 
     elseif cmd == "reloadspells" then
         Spells.Refresh()
+        Spellbook.Refresh()
+
+    elseif cmd == "mem" then
+        -- /clepler mem <gem> <spell name...>
+        local gem = args[2]
+        local name = nil
+        if args[3] then
+            -- concatenate the rest of the spell name
+            local parts = {}
+            for i = 3, #args do
+                table.insert(parts, args[i])
+            end
+            name = table.concat(parts, " ")
+        end
+        if not gem or not name or name == "" then
+            print("[CLEPLER] usage: /clepler mem <gem 1-12> <spell name>")
+        else
+            if Spellbook.Memorize(name, gem) then
+                if not State.Settings.TestMode then
+                    print("[CLEPLER] run /clepler reloadspells once it lands")
+                end
+            else
+                print("[CLEPLER] mem failed (spell not in book or bad gem)")
+            end
+        end
 
     elseif cmd == "add" then
         local name = args[2]

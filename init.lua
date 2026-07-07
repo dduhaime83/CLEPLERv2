@@ -14,11 +14,13 @@ local Spells=require('spells')
 local Engine=require('engine')
 local Healer=require('healer')
 local Buffs=require('buffs')
+local Spellbook=require('spellbook')
 local UI=require('ui')
 
 Config.Initialize()
 WatchList.Load()
 Spells.Refresh()
+Spellbook.Refresh()
 Commands.Register()
 
 Heartbeat.Register("Scanner",State.Settings.ScanDelay,Scanner.Scan)

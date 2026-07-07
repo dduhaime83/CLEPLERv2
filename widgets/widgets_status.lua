@@ -12,6 +12,8 @@ local State    = require('state')
 local Scanner  = require('scanner')
 local HealQueue = require('healqueue')
 local WatchList = require('watchlist')
+local Card     = require('controls.controls_card')
+local Button   = require('controls.controls_button')
 
 local Widget = {}
 
@@ -54,18 +56,18 @@ end
 function Widget.Draw()
 
     -- PLer
-    ImGui.TextColored(0.6, 0.8, 1.0, 1.0, "PLer (you)")
+    Card.Begin("PLer (you)")
     local meHP   = mq.TLO.Me.PctHPs() or 0
     local meMana = mq.TLO.Me.PctMana() or 0
     local r, g, b, a = HPColor(meHP)
     Row(mq.TLO.Me.CleanName() or "Me", meHP, 0, true,
         string.format("mana %d%%", meMana))
-
-    ImGui.Separator()
+    Card.End()
 
     -- Watchlist management: add + remove targets directly from
     -- the main tab so you don't have to switch to Healing.
-    ImGui.TextColored(0.6, 0.8, 1.0, 1.0, "Watchlist:")
+    Card.Begin("Watchlist")
+    ImGui.Text("Add leech:")
     ImGui.SameLine()
     local text, changed = ImGui.InputText("##status_addtarget",
         Widget.addBuf, 0)
@@ -73,7 +75,7 @@ function Widget.Draw()
         Widget.addBuf = text or ""
     end
     ImGui.SameLine()
-    if ImGui.Button("Add Target") then
+    if Button.Draw("Add Target") then
         local name = Widget.addBuf and
             Widget.addBuf:gsub("^%s+", ""):gsub("%s+$", "")
         if name and name ~= "" then
@@ -98,7 +100,7 @@ function Widget.Draw()
     ImGui.Text(string.format("Targets (%d)", #roster))
     for i, p in ipairs(roster) do
         ImGui.PushID(i)
-        if ImGui.Button("Remove") then
+        if Button.Draw("Remove") then
             WatchList.RemoveAt(i)
             WatchList.Save()
             ImGui.PopID()
@@ -123,32 +125,29 @@ function Widget.Draw()
     if #roster == 0 then
         ImGui.TextDisabled("  none -- add a target above")
     end
-
-    ImGui.Separator()
+    Card.End()
 
     -- Group (secondary)
+    Card.Begin(string.format("Group (%d)", #(Scanner.GetGroup() or {})))
     local group = Scanner.GetGroup() or {}
-    ImGui.Text(string.format("Group: %d", #group))
     for _, m in ipairs(group) do
         Row(m.Name, m.HP, m.Distance, m.LineOfSight,
             m.Dead and "dead" or m.Class)
     end
-
-    ImGui.Separator()
+    Card.End()
 
     -- Queue
-    ImGui.Text(string.format("Heal queue: %d", HealQueue.Count()))
+    Card.Begin(string.format("Heal queue (%d)", HealQueue.Count()))
     local top = HealQueue.Next()
     if top then
         ImGui.Text(string.format("  next: %s (%d%%)", top.Name or "?", top.HP or 0))
     end
-
-    ImGui.Separator()
     ImGui.TextDisabled(string.format("Current target: %s   Current spell: %s",
         tostring(State.CurrentTarget), tostring(State.CurrentSpell)))
     if State.LastError and State.LastError ~= "" then
         ImGui.TextColored(1.0, 0.4, 0.4, 1.0, "err: " .. State.LastError)
     end
+    Card.End()
 end
 
 return Widget

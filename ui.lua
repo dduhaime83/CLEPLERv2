@@ -13,12 +13,20 @@ local StatusWidget  = require('widgets.widgets_status')
 local HealingWidget = require('widgets.widgets_healing')
 local SettingsWidget = require('widgets.widgets_settings')
 local DebugWidget   = require('widgets.widgets_debug')
+local RemoteWidget   = require('widgets.widgets_remote')
 
 local UI = {}
 
 function UI.Draw()
 
     if not Window.Open then return end
+
+    -- Viewer toons get the cross-toon remote UI (the cleric's
+    -- live status + a Controls tab to reorder/toggle remotely).
+    if State.RemoteEffectiveRole == "viewer" then
+        RemoteWidget.Draw()
+        return
+    end
 
     ImGui.SetNextWindowSize(Window.Width, Window.Height, ImGuiCond.FirstUseEver)
 

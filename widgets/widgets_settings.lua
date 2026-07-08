@@ -15,6 +15,7 @@ local State    = require('state')
 local Config   = require('config')
 local Loadout  = require('loadout')
 local Spells   = require('spells')
+local Remote   = require('remote')
 local Card     = require('controls.controls_card')
 local Button   = require('controls.controls_button')
 
@@ -30,6 +31,45 @@ local function EnsureBuffers()
     for i = 1, 12 do
         Widget.gemBuf[i] = Loadout.Get(i)
     end
+end
+
+------------------------------------------------------------
+-- Remote role card (source/off/viewer)
+------------------------------------------------------------
+
+local function DrawRemoteRole()
+
+    Card.Begin("Cross-Toon Remote")
+
+    local role = State.Settings.RemoteRole or "off"
+    ImGui.Text("Role:")
+    ImGui.SameLine()
+    local rcol
+    if role == "source" then rcol = { 0.2, 1.0, 0.2, 1.0 }
+    elseif role == "viewer" then rcol = { 0.4, 0.7, 1.0, 1.0 }
+    else rcol = { 0.6, 0.6, 0.6, 1.0 } end
+    ImGui.TextColored(rcol[1], rcol[2], rcol[3], rcol[4], role)
+
+    ImGui.SameLine()
+    if Button.Draw("Off", 0, 0) and role ~= "off" then
+        Remote.SetRole("off")
+    end
+    ImGui.SameLine()
+    if Button.Draw("Source", 0, 0) and role ~= "source" then
+        Remote.SetRole("source")
+    end
+    ImGui.SameLine()
+    if Button.Draw("Viewer", 0, 0) and role ~= "viewer" then
+        Remote.SetRole("viewer")
+    end
+
+    ImGui.TextDisabled(
+        "Source = cleric publishes live status + accepts remote " ..
+        "commands. Viewer = a leech toon renders that status and " ..
+        "can reorder the watchlist / toggle options. Reload CLEPLER " ..
+        "(/lua run init) after changing role for it to take full effect.")
+
+    Card.End()
 end
 
 ------------------------------------------------------------
@@ -107,6 +147,7 @@ function Widget.Draw()
     end
 
     ImGui.Separator()
+    DrawRemoteRole()
     DrawLoadout()
 end
 

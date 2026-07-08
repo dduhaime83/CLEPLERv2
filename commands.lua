@@ -15,6 +15,7 @@ local Spellbook = require('spellbook')
 local Hots      = require('hots')
 local Follow    = require('follow')
 local Loadout   = require('loadout')
+local Remote   = require('remote')
 
 local Commands = {}
 
@@ -26,7 +27,7 @@ local bound = false
 
 local function Usage()
     print("[CLEPLER] usage: /clepler on|off|pause|ui|reloadspells" ..
-          "|add <name>|remove <name>|mem <gem> <spell>|memall|debug|test|buffs|hots|med|follow|status|quit")
+          "|add <name>|remove <name>|mem <gem> <spell>|memall|debug|test|buffs|hots|med|follow|remote <off|source|viewer>|status|quit")
 end
 
 ------------------------------------------------------------
@@ -168,6 +169,16 @@ local function Handler(...)
         print(string.format("[CLEPLER] follow=%s  (%s)",
             tostring(State.Settings.FollowEnabled), Follow.Status()))
         Config.Save()
+
+    elseif cmd == "remote" then
+        local role = args[2]
+        if role == "off" or role == "source" or role == "viewer" then
+            Remote.SetRole(role)
+            print(string.format(
+                "[CLEPLER] remote role set to '%s' (reload CLEPLER for it to take full effect)", role))
+        else
+            print("[CLEPLER] usage: /clepler remote <off|source|viewer>")
+        end
 
     elseif cmd == "status" then
         Status()

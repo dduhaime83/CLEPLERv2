@@ -81,6 +81,7 @@ function Config.Reset()
         MedManaCeilingPct = 85,
         FollowEnabled = false,
         FollowDistance = 20,
+        RemoteRole = "off",
         Debug = false,
     }
 

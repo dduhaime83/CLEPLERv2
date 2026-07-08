@@ -80,6 +80,11 @@ State.Settings = {
     -- med breaks, combat, casting, and pause.
     FollowEnabled       = false,   -- master toggle (off by default for safety)
     FollowDistance      = 20,      -- /stick distance in units
+    -- Cross-toon remote status. "off" (default) = local only,
+    -- "source" = cleric publishes state + accepts commands,
+    -- "viewer" = a leech toon renders the cleric's status and
+    -- can reorder the watchlist / toggle options remotely.
+    RemoteRole          = "off",
     Debug            = false,
 }
 
@@ -108,6 +113,13 @@ State.HotTracker = {}
 -- Set by loadout.lua; read by follow.lua (stop moving while
 -- re-gemming). Cleared when the queue drains or is cancelled.
 State.MemmingLoadout = false
+
+-- Effective remote role, captured once at startup from
+-- Settings.RemoteRole. Runtime branching (heartbeat reg,
+-- UI, Remote.Pulse) reads THIS, not the live setting, so a
+-- role change via /clepler remote only takes full effect after
+-- a reload (avoids half-switched runtime state).
+State.RemoteEffectiveRole = "off"
 
 -- Simple runtime counters.
 State.Stats = {

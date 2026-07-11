@@ -69,8 +69,19 @@ local function PickSpell(entry)
             for _, sp in ipairs(list) do
 
                 if sp and sp.Type == "Spell" and sp.Name then
-                    if Spells.Has(sp.Name) and Spells.Ready(sp.Name) then
-                        return sp.Name, sp
+                    -- Resolve the profile's base name to the actual
+                    -- memorized spell name: exact match first, then a
+                    -- substring fallback on sp.Match (or sp.Name).
+                    -- Mirrors Hots.Resolve / Buffs.Resolve so heal names
+                    -- like "Remedy" match memorized "Remedy Rk. II".
+                    -- Caster.Cast needs the real name for GemFor().
+                    local resolved = sp.Name
+                    if not Spells.Has(resolved) then
+                        local rec = Spells.FindByMatch(sp.Match or sp.Name)
+                        resolved = rec and rec.Name or nil
+                    end
+                    if resolved and Spells.Ready(resolved) then
+                        return resolved, sp
                     end
                 end
 

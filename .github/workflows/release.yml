@@ -1,0 +1,43 @@
+name: Release CLEPLER.zip
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build CLEPLER.zip
+        run: |
+          set -euo pipefail
+          rm -rf CLEPLER CLEPLER.zip
+          mkdir CLEPLER
+          # Copy all top-level Lua source files
+          cp *.lua CLEPLER/
+          # Copy source subdirectories if present
+          for dir in widgets controls; do
+            if [ -d "$dir" ]; then
+              cp -r "$dir" CLEPLER/
+            fi
+          done
+          # Zip so the archive root is CLEPLER/
+          zip -r CLEPLER.zip CLEPLER
+          echo "Contents of CLEPLER.zip:"
+          unzip -l CLEPLER.zip
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: latest
+          prerelease: false
+          make_latest: true
+          files: CLEPLER.zip

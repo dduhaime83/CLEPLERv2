@@ -154,14 +154,14 @@ Profiles.Default = {
         -- counter to State.Stats.HotsCast (see caster.lua).
         {
             Name = "Celestial Elixir",
-            Match = "Celestial",
+            Match = "Celestial Elixir",
             Type = "Spell",
             Category = "Hot",
         },
 
         {
             Name = "Celestial Renewal",
-            Match = "Celestial",
+            Match = "Celestial Renewal",
             Type = "Spell",
             Category = "Hot",
         },

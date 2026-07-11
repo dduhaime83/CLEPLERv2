@@ -92,6 +92,13 @@ function Caster.Cast(spellName, targetID, entry)
         return false
     end
 
+    -- Reject invalid spawn ids. 0 is truthy in Lua, so the check
+    -- above lets it slip; an id <= 0 means the target was
+    -- unresolvable and must never reach /target or /cast.
+    if (tonumber(targetID) or 0) <= 0 then
+        return false
+    end
+
     -- Throttle
     local now = mq.gettime()
     if now - Caster.LastAttempt < Caster.AttemptDelay then

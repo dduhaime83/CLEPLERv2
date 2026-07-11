@@ -32,7 +32,12 @@ end
 ------------------------------------------------------------
 
 function Targeting.Set(id)
-    if not id then return end
+    -- Hard invariant: never target spawn id <= 0. An unresolvable
+    -- spawn (zoning/out-of-range/LD) can surface as id 0; note 0
+    -- is truthy in Lua, so a plain `if not id` check would let it
+    -- through and fire "/target id 0".
+    id = tonumber(id)
+    if not id or id <= 0 then return end
     mq.cmd("/target id " .. tostring(id))
 end
 

@@ -72,6 +72,12 @@ local function Evaluate(member, scanner)
         return
     end
 
+    -- Never queue an unresolvable spawn: id <= 0 can't be
+    -- targeted or cast on (0 is truthy in Lua, so guard numerically).
+    if (tonumber(member.ID) or 0) <= 0 then
+        return
+    end
+
     local hp = member.HP or 100
     local isSelf = (member.ID == mq.TLO.Me.ID())
     local isLeech = member.Watchlist == true

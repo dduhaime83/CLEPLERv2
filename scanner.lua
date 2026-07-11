@@ -265,20 +265,36 @@ end
 ------------------------------------------------------------
 
 local function BuildMember(index)
-    local member = mq.TLO.Group.Member(index)
+    local member = SafeCall(function()
+        return mq.TLO.Group.Member(index)
+    end)
 
-    if not member() then
+    if not member then
         return nil
     end
 
-    local spawn = member.Spawn()
+    if not SafeCall(function() return member() end) then
+        return nil
+    end
+
+    local spawn = SafeCall(function()
+        return member.Spawn()
+    end)
 
     if not spawn then
         return nil
     end
 
+    -- Skip unresolvable spawns entirely. A nil .ID field yields
+    -- SafeID == 0; such a record must never enter the roster,
+    -- since ID 0 is not a valid /target id.
+    local id = SafeID(spawn)
+    if id == 0 then
+        return nil
+    end
+
     local record = {
-        ID = SafeID(spawn),
+        ID = id,
         Name = SafeName(spawn, ""),
         Class = SafeClass(spawn),
         Level = SafeLevel(spawn),
@@ -306,8 +322,15 @@ local function BuildWatchMember(name, priority, healBelowPct)
         return nil
     end
 
+    -- Skip unresolvable spawns entirely (see BuildMember): an
+    -- ID-0 record must never enter the roster.
+    local id = SafeID(spawn)
+    if id == 0 then
+        return nil
+    end
+
     local record = {
-        ID = SafeID(spawn),
+        ID = id,
         Name = SafeName(spawn, name),
         Class = SafeClass(spawn),
         Level = SafeLevel(spawn),
@@ -331,9 +354,11 @@ end
 ------------------------------------------------------------
 
 local function DetectMainTank()
-    local tank = mq.TLO.Group.MainTank()
+    local tank = SafeCall(function()
+        return mq.TLO.Group.MainTank()
+    end)
 
-    if tank and tank() then
+    if tank and SafeCall(function() return tank() end) then
         Scanner.MainTank = SafeName(tank, nil)
         return
     end
@@ -346,9 +371,11 @@ end
 ------------------------------------------------------------
 
 local function DetectAssist()
-    local assist = mq.TLO.Group.MainAssist()
+    local assist = SafeCall(function()
+        return mq.TLO.Group.MainAssist()
+    end)
 
-    if assist and assist() then
+    if assist and SafeCall(function() return assist() end) then
         local spawn = SafeCall(function()
             return assist.Target()
         end)

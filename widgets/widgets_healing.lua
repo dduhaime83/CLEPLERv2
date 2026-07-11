@@ -443,6 +443,8 @@ function Widget.Draw()
 
     DrawHeader()
 
+    DrawAddRow()
+
     local players = WatchList.GetPlayers() or {}
 
     if #players == 0 then

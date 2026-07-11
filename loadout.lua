@@ -140,6 +140,18 @@ function Loadout.MemAll()
         return
     end
 
+    -- /memspell is a real game action, and Spellbook.Memorize
+    -- short-circuits to a dry-run print under TestMode. Left
+    -- unguarded, MemAll would build the queue and Pulse would
+    -- "drain" it (even showing [MEMMING] progress) while nothing
+    -- actually gets re-gemmed -- exactly the "loads but never
+    -- mems" symptom. Bail early with a clear, actionable message
+    -- instead of silently no-opping.
+    if State.Settings.TestMode then
+        print("[CLEPLER] memall skipped: Test Mode is ON (dry run, no casts). Disable Test Mode to memorize.")
+        return
+    end
+
     if InCombat() then
         print("[CLEPLER] memall skipped: in combat")
         return

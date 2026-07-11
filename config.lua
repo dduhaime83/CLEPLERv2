@@ -53,7 +53,7 @@ function Config.Reset()
         AnnounceHeals = true,
         IgnoreLOS = false,
         IgnoreRange = false,
-        TestMode = true,
+        TestMode = false,
         UseFastHeal = true,
         FastHealPct = 30,
         UseBigHeal = true,

@@ -131,6 +131,98 @@ local function SafeCall(fn)
 end
 
 ------------------------------------------------------------
+-- Identity/field readers. In VeryVanilla MQ, an accessor
+-- like member.Spawn() can return a non-nil wrapper whose
+-- fields (.ID, .CleanName, .Level, .Class.ShortName) are nil
+-- for spawns that are zoning, out of range, or otherwise
+-- momentarily unresolvable. Calling .ID() on such a wrapper
+-- crashes with "attempt to call field 'ID' (a nil value)".
+-- Wrap every field read in pcall so the heartbeat can't die.
+------------------------------------------------------------
+
+local function SafeID(spawn)
+    if not spawn then
+        return 0
+    end
+
+    local ok, value = pcall(function()
+        return spawn.ID() or 0
+    end)
+
+    if ok then
+        return tonumber(value) or 0
+    end
+
+    return 0
+end
+
+local function SafeName(spawn, fallback)
+    fallback = fallback or ""
+
+    if not spawn then
+        return fallback
+    end
+
+    local ok, value = pcall(function()
+        return spawn.CleanName()
+    end)
+
+    if ok and value then
+        return value
+    end
+
+    return fallback
+end
+
+local function SafeClass(spawn)
+    if not spawn then
+        return ""
+    end
+
+    local ok, value = pcall(function()
+        return spawn.Class.ShortName()
+    end)
+
+    if ok and value then
+        return value
+    end
+
+    return ""
+end
+
+local function SafeLevel(spawn)
+    if not spawn then
+        return 0
+    end
+
+    local ok, value = pcall(function()
+        return spawn.Level() or 0
+    end)
+
+    if ok then
+        return tonumber(value) or 0
+    end
+
+    return 0
+end
+
+local function SafePet(member)
+    if not member then
+        return false
+    end
+
+    local ok, value = pcall(function()
+        return member.Pet() or false
+    end)
+
+    if ok then
+        return value or false
+    end
+
+    return false
+end
+
+------------------------------------------------------------
 -- Resolve a watchlist leech to an in-zone spawn.
 -- Exact PC match only; returns nil if not found/valid.
 ------------------------------------------------------------
@@ -186,16 +278,16 @@ local function BuildMember(index)
     end
 
     local record = {
-        ID = spawn.ID() or 0,
-        Name = spawn.CleanName() or "",
-        Class = spawn.Class.ShortName() or "",
-        Level = spawn.Level() or 0,
+        ID = SafeID(spawn),
+        Name = SafeName(spawn, ""),
+        Class = SafeClass(spawn),
+        Level = SafeLevel(spawn),
         HP = SafePct(spawn),
         Aggro = SafeAggro(spawn),
         Distance = SafeDistance(spawn),
         Dead = SafeDead(spawn),
         LineOfSight = SafeLOS(spawn),
-        Pet = member.Pet() or false,
+        Pet = SafePet(member),
         Spawn = spawn,
         Watchlist = false,
         Priority = 999,
@@ -215,10 +307,10 @@ local function BuildWatchMember(name, priority, healBelowPct)
     end
 
     local record = {
-        ID = spawn.ID() or 0,
-        Name = spawn.CleanName() or name,
-        Class = (spawn.Class and spawn.Class.ShortName()) or "",
-        Level = spawn.Level() or 0,
+        ID = SafeID(spawn),
+        Name = SafeName(spawn, name),
+        Class = SafeClass(spawn),
+        Level = SafeLevel(spawn),
         HP = SafePct(spawn),
         Aggro = SafeAggro(spawn),
         Distance = SafeDistance(spawn),
@@ -242,7 +334,7 @@ local function DetectMainTank()
     local tank = mq.TLO.Group.MainTank()
 
     if tank and tank() then
-        Scanner.MainTank = tank.CleanName()
+        Scanner.MainTank = SafeName(tank, nil)
         return
     end
 
@@ -257,19 +349,29 @@ local function DetectAssist()
     local assist = mq.TLO.Group.MainAssist()
 
     if assist and assist() then
-        local spawn = assist.Target()
+        local spawn = SafeCall(function()
+            return assist.Target()
+        end)
 
-        if spawn and spawn() then
-            Scanner.AssistTarget = spawn.ID()
-            return
+        if spawn and SafeCall(function() return spawn() end) then
+            local id = SafeID(spawn)
+            if id ~= 0 then
+                Scanner.AssistTarget = id
+                return
+            end
         end
     end
 
     local target = mq.TLO.Target
 
-    if target() then
-        if target.Type() == "NPC" then
-            Scanner.AssistTarget = target.ID()
+    local isNPC = SafeCall(function()
+        return target() and target.Type() == "NPC"
+    end)
+
+    if isNPC then
+        local id = SafeID(target)
+        if id ~= 0 then
+            Scanner.AssistTarget = id
             return
         end
     end
@@ -333,7 +435,7 @@ local function BuildWatchMembers(seenIDs)
         return
     end
 
-    local meID = mq.TLO.Me.ID() or 0
+    local meID = SafeID(mq.TLO.Me)
     -- self is already marked seen by Scanner.Update(); nothing
     -- to do here.
 
@@ -365,18 +467,18 @@ local function FindLowest()
         end
     end
 
-    local meHP = mq.TLO.Me.PctHPs()
+    local meHP = SafePct(mq.TLO.Me)
 
     if meHP < Scanner.LowestHP then
         Scanner.LowestHP = meHP
 
         Scanner.LowestMember = {
-            ID = mq.TLO.Me.ID(),
-            Name = mq.TLO.Me.CleanName(),
+            ID = SafeID(mq.TLO.Me),
+            Name = SafeName(mq.TLO.Me, ""),
             HP = meHP,
-            Aggro = mq.TLO.Me.PctAggro(),
+            Aggro = SafeAggro(mq.TLO.Me),
             Distance = 0,
-            Dead = mq.TLO.Me.Dead(),
+            Dead = SafeDead(mq.TLO.Me),
             LineOfSight = true,
             Spawn = mq.TLO.Me,
             Watchlist = false,
@@ -400,7 +502,7 @@ function Scanner.Update()
     -- Exclude self from the group/watchlist lists; healqueue
     -- adds self separately. (Some MQ builds include self in
     -- Group.Member(i), so mark it seen before the loop.)
-    local meID = mq.TLO.Me.ID() or 0
+    local meID = SafeID(mq.TLO.Me)
     if meID ~= 0 then
         seenIDs[meID] = true
     end
@@ -478,7 +580,7 @@ function Scanner.AnyoneBelow(percent)
         end
     end
 
-    local meHP = mq.TLO.Me.PctHPs()
+    local meHP = SafePct(mq.TLO.Me)
 
     if meHP <= percent then
         return true
@@ -499,14 +601,14 @@ function Scanner.FindByName(name)
         end
     end
 
-    if (mq.TLO.Me.CleanName() or ""):lower() == needle then
+    if SafeName(mq.TLO.Me, ""):lower() == needle then
         return {
-            ID = mq.TLO.Me.ID(),
-            Name = mq.TLO.Me.CleanName(),
-            HP = mq.TLO.Me.PctHPs(),
-            Aggro = mq.TLO.Me.PctAggro(),
+            ID = SafeID(mq.TLO.Me),
+            Name = SafeName(mq.TLO.Me, ""),
+            HP = SafePct(mq.TLO.Me),
+            Aggro = SafeAggro(mq.TLO.Me),
             Distance = 0,
-            Dead = mq.TLO.Me.Dead(),
+            Dead = SafeDead(mq.TLO.Me),
             LineOfSight = true,
             Spawn = mq.TLO.Me,
             Watchlist = false,

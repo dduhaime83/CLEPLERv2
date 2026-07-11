@@ -75,10 +75,19 @@ local function PickSpell(entry)
                     -- Mirrors Hots.Resolve / Buffs.Resolve so heal names
                     -- like "Remedy" match memorized "Remedy Rk. II".
                     -- Caster.Cast needs the real name for GemFor().
+                    -- A profile entry may set Match = "" to opt out of
+                    -- the fuzzy fallback (exact-only) when its Name is a
+                    -- generic word that would substring-match the wrong
+                    -- spell (e.g. "Healing" inside "Superior Healing").
                     local resolved = sp.Name
                     if not Spells.Has(resolved) then
-                        local rec = Spells.FindByMatch(sp.Match or sp.Name)
-                        resolved = rec and rec.Name or nil
+                        local needle = sp.Match or sp.Name
+                        if needle and needle ~= "" then
+                            local rec = Spells.FindByMatch(needle)
+                            resolved = rec and rec.Name or nil
+                        else
+                            resolved = nil
+                        end
                     end
                     if resolved and Spells.Ready(resolved) then
                         return resolved, sp

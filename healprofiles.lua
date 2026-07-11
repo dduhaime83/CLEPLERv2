@@ -91,17 +91,18 @@ Profiles.Default = {
 
     Big = {
 
+        -- Classic/Kunark-era cleric big heals. Match is a substring
+        -- fallback so a ranked spell ("Divine Light Rk. II") still
+        -- resolves. "Divine Light" is distinctive enough that the
+        -- fuzzy fallback won't collide with a weaker heal.
         {
-            Name = "Complete Heal",
+            Name = "Divine Light",
+            Match = "Divine Light",
             Type = "Spell",
         },
 
         {
-            -- Generic name: Match="" forces exact-only resolution so
-            -- the fuzzy fallback can't grab "Light Healing" (a weak
-            -- heal) into this big-heal slot.
-            Name = "Light",
-            Match = "",
+            Name = "Complete Heal",
             Type = "Spell",
         },
 
@@ -118,17 +119,18 @@ Profiles.Default = {
 
     Light = {
 
+        -- Moderate/light direct heals. "Healing Light" is the
+        -- distinctive cleric light-heal line; Match lets a ranked
+        -- version resolve too. It won't collide with "Divine Light"
+        -- (big) or "Word of Healing" (group) under the fuzzy fallback.
         {
-            Name = "Light Healing",
+            Name = "Healing Light",
+            Match = "Healing Light",
             Type = "Spell",
         },
 
         {
-            -- Generic name: Match="" forces exact-only resolution so
-            -- the fuzzy fallback can't grab "Superior Healing" /
-            -- "Word of Healing" into this light-heal slot.
-            Name = "Healing",
-            Match = "",
+            Name = "Light Healing",
             Type = "Spell",
         },
 
@@ -151,15 +153,15 @@ Profiles.Default = {
         -- "Celestial Renewal"). Category="Hot" routes the cast
         -- counter to State.Stats.HotsCast (see caster.lua).
         {
-            Name = "Celestial Renewal",
+            Name = "Celestial Elixir",
             Match = "Celestial",
             Type = "Spell",
             Category = "Hot",
         },
 
         {
-            Name = "Elixir",
-            Match = "Elixir",
+            Name = "Celestial Renewal",
+            Match = "Celestial",
             Type = "Spell",
             Category = "Hot",
         },
@@ -172,13 +174,16 @@ Profiles.Default = {
 
     Group = {
 
+        -- "Word of Healing" is the classic cleric group-heal line;
+        -- Match lets a ranked version resolve too.
         {
-            Name = "Word of Health",
+            Name = "Word of Healing",
+            Match = "Word of Healing",
             Type = "Spell",
         },
 
         {
-            Name = "Word of Healing",
+            Name = "Word of Health",
             Type = "Spell",
         },
 

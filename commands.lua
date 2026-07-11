@@ -142,6 +142,7 @@ local function Handler(...)
         State.Settings.TestMode = not State.Settings.TestMode
         print(string.format("[CLEPLER] testmode=%s (dry run, no casts)",
             tostring(State.Settings.TestMode)))
+        Config.Save()
 
     elseif cmd == "buffs" then
         State.Settings.Buffing = not State.Settings.Buffing

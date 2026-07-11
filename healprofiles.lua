@@ -97,7 +97,11 @@ Profiles.Default = {
         },
 
         {
+            -- Generic name: Match="" forces exact-only resolution so
+            -- the fuzzy fallback can't grab "Light Healing" (a weak
+            -- heal) into this big-heal slot.
             Name = "Light",
+            Match = "",
             Type = "Spell",
         },
 
@@ -120,7 +124,11 @@ Profiles.Default = {
         },
 
         {
+            -- Generic name: Match="" forces exact-only resolution so
+            -- the fuzzy fallback can't grab "Superior Healing" /
+            -- "Word of Healing" into this light-heal slot.
             Name = "Healing",
+            Match = "",
             Type = "Spell",
         },
 
